@@ -1,0 +1,3 @@
+{"buttons":0,"cursorID":"arrow-1","displayID":1,"schemaVersion":1,"sequence":1,"timeNs":0,"type":"cursorMove","xPx":0,"yPx":0}
+{"buttons":0,"cursorID":"arrow-1","displayID":1,"schemaVersion":1,"sequence":2,"timeNs":1000000,"type":"cursorMove","xPx":1,"yPx":0}
+{"buttons":0,"cursorID":"arrow-1","displayID":1,"schemaVersion":1,"sequence":3,"timeNs":2000000,"type":"cursorMove","xPx":2,"yPx":0}

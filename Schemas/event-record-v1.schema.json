@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aks.in/schemas/event-record-v1.schema.json",
+  "title": "Aks input event record v1 (one JSON object per line of an event chunk)",
+  "type": "object",
+  "required": ["schemaVersion", "sequence", "timeNs", "type"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "timeNs": { "type": "integer" },
+    "type": {
+      "enum": [
+        "cursorMove", "mouseDown", "mouseUp", "scrollWheel",
+        "cursorShapeChanged", "keyDown", "keyUp", "flagsChanged"
+      ]
+    },
+    "displayID": { "type": "integer" },
+    "xPx": { "type": "number" },
+    "yPx": { "type": "number" },
+    "cursorID": { "type": "string" },
+    "buttons": { "type": "integer", "minimum": 0 },
+    "button": { "enum": ["left", "right", "other"] },
+    "clickCount": { "type": "integer", "minimum": 1 },
+    "pressure": { "type": "number", "minimum": 0, "maximum": 1 },
+    "modifiers": {
+      "type": "array",
+      "items": { "enum": ["capsLock", "shift", "control", "option", "command", "fn"] }
+    },
+    "deltaX": { "type": "number" },
+    "deltaY": { "type": "number" },
+    "keyCode": { "type": "integer" },
+    "characters": { "type": "string" },
+    "isSecureInput": { "type": "boolean" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "enum": ["cursorMove", "mouseDown", "mouseUp"] } } },
+      "then": { "required": ["displayID", "xPx", "yPx"] }
+    },
+    {
+      "if": { "properties": { "type": { "enum": ["mouseDown", "mouseUp"] } } },
+      "then": { "required": ["button"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "cursorShapeChanged" } } },
+      "then": { "required": ["cursorID"] }
+    }
+  ],
+  "$comment": "Coordinates are display-local physical pixels ((globalPoint - displayBounds.origin) x backingScale) plus displayID (ADR 0004); conversion to captured source coordinates uses the display/capture geometry stored in the manifest capture block. During secure input, keyDown/keyUp records carry isSecureInput=true and no `characters`."
+}

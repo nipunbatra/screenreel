@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aks.in/schemas/session-lock-v1.schema.json",
+  "title": "Aks session.lock v1 — incomplete-session marker, not an OS lock",
+  "type": "object",
+  "required": [
+    "schemaVersion", "sessionID", "pid", "processStartMarker",
+    "createdAt", "lastCommittedSequence", "heartbeatAt"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sessionID": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "pid": { "type": "integer", "minimum": 1 },
+    "processStartMarker": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "lastCommittedSequence": { "type": "integer", "minimum": 0 },
+    "heartbeatAt": { "type": "string", "format": "date-time" }
+  },
+  "$comment": "Presence of session.lock marks an incomplete session. Recovery decides liveness from pid + processStartMarker + heartbeat age, never from file presence alone. The file is removed only after sessionFinalized is durable."
+}

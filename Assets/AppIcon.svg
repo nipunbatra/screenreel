@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="clipB">
+      <rect width="1024" height="1024" rx="232"/>
+    </clipPath>
+
+    <linearGradient id="backgroundB" x1="118" y1="58" x2="890" y2="982" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17243A"/>
+      <stop offset="0.44" stop-color="#0B1728"/>
+      <stop offset="1" stop-color="#050B14"/>
+    </linearGradient>
+    <radialGradient id="navyLiftB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(510 214) rotate(90) scale(512 565)">
+      <stop stop-color="#263A58" stop-opacity="0.72"/>
+      <stop offset="0.52" stop-color="#13233A" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#050B14" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mintGlowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(760 308) rotate(134) scale(330)">
+      <stop stop-color="#74F0C4" stop-opacity="0.30"/>
+      <stop offset="0.48" stop-color="#52DDB5" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#52DDB5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coralGlowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(320 716) rotate(-42) scale(352)">
+      <stop stop-color="#FF745B" stop-opacity="0.34"/>
+      <stop offset="0.5" stop-color="#FF664D" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#FF664D" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="topGlassB" x1="512" y1="22" x2="512" y2="284" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CFE8FF" stop-opacity="0.18"/>
+      <stop offset="0.5" stop-color="#9CC9E9" stop-opacity="0.055"/>
+      <stop offset="1" stop-color="#9CC9E9" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bottomVignetteB" x1="512" y1="620" x2="512" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00050C" stop-opacity="0"/>
+      <stop offset="1" stop-color="#00040A" stop-opacity="0.66"/>
+    </linearGradient>
+    <linearGradient id="rimB" x1="132" y1="88" x2="894" y2="936" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B7D8F1" stop-opacity="0.37"/>
+      <stop offset="0.29" stop-color="#69F0C1" stop-opacity="0.12"/>
+      <stop offset="0.70" stop-color="#FF8067" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="glyphStrokeB" x1="276" y1="304" x2="763" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A0FFE0"/>
+      <stop offset="0.46" stop-color="#63E6BE"/>
+      <stop offset="0.62" stop-color="#FFC194"/>
+      <stop offset="1" stop-color="#FF725B"/>
+    </linearGradient>
+    <linearGradient id="orbitB" x1="414" y1="401" x2="608" y2="589" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B5FFE8"/>
+      <stop offset="0.44" stop-color="#62E9C1"/>
+      <stop offset="0.66" stop-color="#FFD09B"/>
+      <stop offset="1" stop-color="#FF725B"/>
+    </linearGradient>
+    <radialGradient id="recordB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(488 456) rotate(53) scale(114)">
+      <stop stop-color="#FFB184"/>
+      <stop offset="0.48" stop-color="#FF785F"/>
+      <stop offset="1" stop-color="#EE4F55"/>
+    </radialGradient>
+
+    <filter id="ambientBlurB" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="54"/>
+    </filter>
+    <filter id="glyphHaloB" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="glyphShadowB" x="-35%" y="-35%" width="170%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="25" result="blur"/>
+      <feOffset in="blur" dy="27" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0.02 0 0 0 0 0.05 0 0 0 0.72 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <mask id="reelMaskB" maskUnits="userSpaceOnUse" x="424" y="399" width="176" height="176">
+      <rect x="424" y="399" width="176" height="176" fill="#000000"/>
+      <circle cx="512" cy="487" r="75" fill="#FFFFFF"/>
+      <circle cx="512" cy="445" r="11.5" fill="#000000"/>
+      <circle cx="554" cy="487" r="11.5" fill="#000000"/>
+      <circle cx="512" cy="529" r="11.5" fill="#000000"/>
+      <circle cx="470" cy="487" r="11.5" fill="#000000"/>
+    </mask>
+  </defs>
+
+  <g clip-path="url(#clipB)">
+    <rect width="1024" height="1024" fill="url(#backgroundB)"/>
+    <rect width="1024" height="1024" fill="url(#navyLiftB)"/>
+    <circle cx="760" cy="308" r="268" fill="url(#mintGlowB)" filter="url(#ambientBlurB)"/>
+    <circle cx="320" cy="716" r="280" fill="url(#coralGlowB)" filter="url(#ambientBlurB)"/>
+    <ellipse cx="512" cy="40" rx="430" ry="238" fill="url(#topGlassB)" filter="url(#ambientBlurB)"/>
+    <rect y="586" width="1024" height="438" fill="url(#bottomVignetteB)"/>
+
+    <path d="M160 216C235 105 356 61 512 61C668 61 789 105 864 216" fill="none" stroke="#DDF2FF" stroke-opacity="0.105" stroke-width="7" stroke-linecap="round"/>
+    <rect x="9" y="9" width="1006" height="1006" rx="224" fill="none" stroke="url(#rimB)" stroke-width="11"/>
+
+    <g opacity="0.28" filter="url(#glyphHaloB)">
+      <rect x="207" y="265" width="610" height="494" rx="127" fill="none" stroke="url(#glyphStrokeB)" stroke-width="28"/>
+      <circle cx="512" cy="487" r="118" fill="none" stroke="url(#orbitB)" stroke-width="27"/>
+      <circle cx="512" cy="487" r="78" fill="#FF725B"/>
+    </g>
+
+    <g filter="url(#glyphShadowB)">
+      <rect x="207" y="265" width="610" height="494" rx="127" fill="#081523" fill-opacity="0.52" stroke="url(#glyphStrokeB)" stroke-width="21"/>
+      <path d="M310 306H711C743 306 769 332 769 364" fill="none" stroke="#D5FFF1" stroke-opacity="0.28" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="512" cy="487" r="134" fill="#07111D" fill-opacity="0.32" stroke="#8FF8D6" stroke-opacity="0.10" stroke-width="2"/>
+      <circle cx="512" cy="487" r="114" fill="none" stroke="url(#orbitB)" stroke-width="19" stroke-linecap="round" stroke-dasharray="158 21" transform="rotate(-22.5 512 487)"/>
+      <circle cx="512" cy="487" r="75" fill="url(#recordB)" mask="url(#reelMaskB)"/>
+      <circle cx="512" cy="487" r="15" fill="#B6FFE7"/>
+      <circle cx="507" cy="482" r="5" fill="#FFFFFF" fill-opacity="0.68"/>
+    </g>
+  </g>
+</svg>

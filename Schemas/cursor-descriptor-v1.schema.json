@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aks.in/schemas/cursor-descriptor-v1.schema.json",
+  "title": "Aks cursor descriptor v1 (events/cursors/descriptor-NNNN.json)",
+  "type": "object",
+  "required": [
+    "schemaVersion", "id", "semanticFamily", "sourceType",
+    "widthPx", "heightPx", "backingScale", "hotspotXPx", "hotspotYPx"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "semanticFamily": {
+      "enum": [
+        "arrow", "iBeam", "pointingHand", "crosshair", "resizeLeftRight",
+        "resizeUpDown", "openHand", "closedHand", "contextualMenu",
+        "dragCopy", "dragLink", "disappearingItem", "operationNotAllowed",
+        "unknown"
+      ]
+    },
+    "sourceType": { "enum": ["nscursor", "system", "custom"] },
+    "widthPx": { "type": "number", "exclusiveMinimum": 0 },
+    "heightPx": { "type": "number", "exclusiveMinimum": 0 },
+    "backingScale": { "type": "number", "exclusiveMinimum": 0 },
+    "hotspotXPx": { "type": "number" },
+    "hotspotYPx": { "type": "number" },
+    "imagePath": { "type": "string" },
+    "imageSHA256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$comment": "Hotspot is in source pixels of the stored image. imagePath is package-relative and optional: a descriptor without an image still identifies the semantic family so a vector substitute can render."
+}

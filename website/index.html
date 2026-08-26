@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screenreel — the Mac recorder that never loses a take</title>
+<meta name="description" content="Screenreel records your screen like a black box and edits like a studio: automatic zooms, cuts, captions, camera scenes — all on your Mac, open source.">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0b0e14;
+    --panel: #121724;
+    --panel-2: #171d2e;
+    --text: #eef1f8;
+    --muted: #96a0b5;
+    --mint: #5ce0b8;
+    --coral: #ff6f61;
+    --line: rgba(255, 255, 255, 0.07);
+    --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, sans-serif;
+    --body: "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ink); color: var(--text);
+    font-family: var(--body); line-height: 1.65;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---- nav ---- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: rgba(11, 14, 20, 0.7); border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: 1120px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .nav-inner img { width: 30px; height: 30px; border-radius: 7px; }
+  .wordmark { font-family: var(--display); font-weight: 700; font-size: 1.06rem; letter-spacing: -0.01em; }
+  .nav-links { margin-left: auto; display: flex; gap: 26px; font-size: 0.92rem; color: var(--muted); }
+  .nav-links a:hover { color: var(--text); }
+  .nav-gh {
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 14px;
+    color: var(--text) !important; font-weight: 500;
+  }
+  .nav-gh:hover { border-color: rgba(255, 255, 255, 0.25); }
+
+  /* ---- hero ---- */
+  header { position: relative; padding: 96px 0 24px; text-align: center; }
+  .glow {
+    position: absolute; inset: auto 0 -30%; height: 720px; z-index: -1;
+    background:
+      radial-gradient(46% 42% at 38% 60%, rgba(92, 224, 184, 0.16), transparent 70%),
+      radial-gradient(46% 42% at 62% 60%, rgba(255, 111, 97, 0.16), transparent 70%);
+    filter: blur(18px); pointer-events: none;
+  }
+  .rec {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.22em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .reel { width: 18px; height: 18px; position: relative; }
+  .reel::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: var(--coral); box-shadow: 0 0 12px rgba(255, 111, 97, 0.8);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .reel::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 1.5px solid var(--mint); border-left-color: transparent;
+    animation: spin 6s linear infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  h1 {
+    margin: 26px auto 0; max-width: 820px;
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(2.6rem, 6.4vw, 4.4rem);
+    line-height: 1.04; letter-spacing: -0.03em;
+  }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(92deg, var(--mint), var(--coral));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub {
+    margin: 22px auto 0; max-width: 620px;
+    font-size: 1.16rem; color: var(--muted);
+  }
+  .ctas { margin-top: 34px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    font-weight: 600; font-size: 0.98rem; border-radius: 10px;
+    padding: 13px 26px; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary {
+    color: #0b0e14;
+    background: linear-gradient(92deg, var(--mint), #8fe8c9);
+    box-shadow: 0 8px 30px rgba(92, 224, 184, 0.25);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 36px rgba(92, 224, 184, 0.35); }
+  .btn-ghost { border: 1px solid var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: rgba(255, 255, 255, 0.25); }
+  .facts {
+    margin-top: 30px; display: flex; gap: 8px 26px; justify-content: center; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
+  }
+  .facts span::before { content: "— "; color: var(--mint); }
+
+  .stage { margin-top: 58px; position: relative; }
+  .stage img {
+    border-radius: 14px; border: 1px solid var(--line);
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 0 90px rgba(92, 224, 184, 0.07);
+  }
+
+  /* ---- sections ---- */
+  section { padding: 110px 0 0; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.24em;
+    text-transform: uppercase;
+    background: linear-gradient(92deg, var(--mint), var(--coral));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h2 {
+    margin-top: 12px; font-family: var(--display); font-weight: 700;
+    font-size: clamp(1.7rem, 3.6vw, 2.5rem); letter-spacing: -0.02em; line-height: 1.15;
+  }
+  .feature {
+    display: grid; grid-template-columns: 5fr 6fr; gap: 56px; align-items: center;
+  }
+  .feature.flip { grid-template-columns: 6fr 5fr; }
+  .feature.flip .copy { order: 2; }
+  .feature .copy p { margin-top: 16px; color: var(--muted); font-size: 1.04rem; }
+  .feature ul { margin-top: 18px; list-style: none; }
+  .feature li {
+    padding: 9px 0 9px 26px; position: relative; color: var(--text); font-size: 0.98rem;
+  }
+  .feature li::before {
+    content: ""; position: absolute; left: 0; top: 17px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: linear-gradient(92deg, var(--mint), var(--coral));
+  }
+  .feature li b { font-weight: 600; }
+  .feature li span { color: var(--muted); }
+  .shot img {
+    border-radius: 12px; border: 1px solid var(--line);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  }
+  kbd {
+    font-family: var(--mono); font-size: 0.82em;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px;
+  }
+
+  /* ---- recovery band ---- */
+  .band {
+    margin-top: 110px;
+    background: linear-gradient(180deg, var(--panel), var(--ink));
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 84px 0;
+  }
+  .band .inner { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .band p { margin-top: 16px; color: var(--muted); }
+  .band b { color: var(--text); font-weight: 600; }
+  .segments { display: grid; gap: 10px; font-family: var(--mono); font-size: 0.8rem; }
+  .seg {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 16px; color: var(--muted);
+  }
+  .seg i {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--mint); flex: none;
+    font-style: normal;
+  }
+  .seg.live i { background: var(--coral); animation: pulse 1.6s ease-in-out infinite; }
+  .seg em { font-style: normal; color: var(--text); }
+
+  /* ---- quiet grid ---- */
+  .quiet { margin-top: 26px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .q {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px;
+  }
+  .q h3 { font-family: var(--body); font-weight: 600; font-size: 0.98rem; }
+  .q p { margin-top: 6px; color: var(--muted); font-size: 0.9rem; }
+
+  /* ---- cli ---- */
+  .cli {
+    margin-top: 26px; background: #0a0d13; border: 1px solid var(--line);
+    border-radius: 14px; padding: 26px 30px; overflow-x: auto;
+    font-family: var(--mono); font-size: 0.88rem; line-height: 2.05; color: #ccd3e4;
+    white-space: pre;
+  }
+  .cli .c { color: #5b6478; }
+  .cli .p { color: var(--mint); }
+
+  footer {
+    margin-top: 120px; border-top: 1px solid var(--line);
+    padding: 44px 0 64px; text-align: center; color: var(--muted); font-size: 0.92rem;
+  }
+  footer .rec { margin-bottom: 18px; }
+  footer p + p { margin-top: 6px; }
+
+  /* ---- reveal ---- */
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .reel::before, .reel::after, .seg.live i { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+  @media (max-width: 860px) {
+    .feature, .feature.flip, .band .inner { grid-template-columns: 1fr; gap: 30px; }
+    .feature.flip .copy { order: 0; }
+    .quiet { grid-template-columns: 1fr; }
+    header { padding-top: 64px; }
+    .nav-links a:not(.nav-gh) { display: none; }
+  }
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <img src="assets/icon.png" alt="">
+      <span class="wordmark">Screenreel</span>
+      <div class="nav-links">
+        <a href="#editing">Editing</a>
+        <a href="#captions">Captions</a>
+        <a href="#recovery">Recovery</a>
+        <a href="#build">Build</a>
+        <a class="nav-gh" href="https://github.com/nipunbatra/screenreel">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header>
+    <div class="glow"></div>
+    <div class="wrap">
+      <div class="rec"><span class="reel"></span>Now recording, safely</div>
+      <h1>The screen recorder that <em>never loses a take</em>.</h1>
+      <p class="sub">
+        Screenreel records your Mac like a black box and edits like a studio —
+        automatic zooms, cuts, captions, and camera scenes, computed entirely
+        on your machine.
+      </p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="https://github.com/nipunbatra/screenreel">View on GitHub</a>
+        <a class="btn btn-ghost" href="#build">Build it in two commands</a>
+      </div>
+      <div class="facts">
+        <span>macOS 15+, Apple silicon</span>
+        <span>100% on-device</span>
+        <span>422 tests, leak-checked</span>
+        <span>MIT licensed</span>
+      </div>
+    </div>
+    <div class="wrap stage reveal">
+      <img src="assets/editor-styled.png"
+        alt="The Screenreel editor: a recording on a sunset gradient card beside an inspector with background swatches, canvas presets, cursor effects, clip tools, and audio cleanup">
+    </div>
+  </header>
+
+  <section id="editing" class="wrap">
+    <div class="feature reveal">
+      <div class="copy">
+        <div class="eyebrow">Editing</div>
+        <h2>The polish is automatic. The control is yours.</h2>
+        <p>Every click you recorded becomes an editing decision you can revise —
+        nothing is baked into the pixels.</p>
+        <ul>
+          <li><b>Zooms aim themselves</b> <span>— generated from your clicks with
+          spring-smoothed camera moves; click the preview to re-aim any of them.</span></li>
+          <li><b>Dead air cuts itself</b> <span>— idle-and-quiet stretches play at 4×;
+          split with <kbd>S</kbd>, ripple-delete with <kbd>X</kbd>, undo anything.</span></li>
+          <li><b>Scenes stay revisable</b> <span>— open fullscreen on your camera, fly
+          into a corner PiP, restyle backgrounds and click ripples after the fact.</span></li>
+        </ul>
+      </div>
+      <div class="shot">
+        <img src="assets/editor-dark.png"
+          alt="The editor timeline with clip lane, zoom blocks, and waveform">
+      </div>
+    </div>
+  </section>
+
+  <section id="captions" class="wrap">
+    <div class="feature flip reveal">
+      <div class="copy">
+        <div class="eyebrow">Captions &amp; audio</div>
+        <h2>Captioned, cleaned, and never uploaded.</h2>
+        <p>Everything that touches your voice and words runs on the Mac in front of you.</p>
+        <ul>
+          <li><b>On-device transcription</b> <span>— an editable transcript panel;
+          click any line to jump the playhead there.</span></li>
+          <li><b>Subtitles that stay in sync</b> <span>— SRT and WebVTT timestamps stay
+          exact through every cut, speed-up, and trim.</span></li>
+          <li><b>Honest noise cleanup</b> <span>— a spectral gate tames fan hum at
+          export; the raw microphone track is never modified.</span></li>
+        </ul>
+      </div>
+      <div class="shot">
+        <img src="assets/editor-styled.png" alt="Styled export preview with gradient background">
+      </div>
+    </div>
+  </section>
+
+  <section id="recovery" class="band reveal">
+    <div class="wrap inner">
+      <div>
+        <div class="eyebrow">Recovery-first</div>
+        <h2>Force-quit it. Kernel-panic it. Your lecture survives.</h2>
+        <p>A recording is an open package of <b>segmented raw media</b>, a
+        <b>hash-chained journal</b>, and an <b>atomically replaced manifest</b> —
+        not one fragile MP4 that must finalize perfectly. Kill the app mid-take
+        and the project reopens, validated, with everything up to the last few
+        seconds intact.</p>
+        <p>Exports inherit the same spine: <b>checkpointed segments</b> mean a crash
+        loses at most one, and exporting again resumes instead of starting over.</p>
+      </div>
+      <div class="segments" aria-hidden="true">
+        <div class="seg"><i></i><em>screen-0001.mp4</em> committed · 5.0 s · sha ✓</div>
+        <div class="seg"><i></i><em>screen-0002.mp4</em> committed · 5.0 s · sha ✓</div>
+        <div class="seg"><i></i><em>mic-0002.caf</em> committed · journaled</div>
+        <div class="seg live"><i></i><em>screen-0003.mp4</em> recording…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">And the rest</div>
+      <h2>Small features, done properly.</h2>
+      <div class="quiet">
+        <div class="q"><h3>Click ripples &amp; shortcut chips</h3><p>Clicks ring under the cursor; an opt-in overlay shows ⌘⇧P — shortcuts only, never your typing.</p></div>
+        <div class="q"><h3>Looping GIF export</h3><p>The same styled composition, as a share-anywhere GIF with a sane size budget.</p></div>
+        <div class="q"><h3>Any aspect, one click</h3><p>16:9, 9:16, 1:1 — zooms are source-anchored, so nothing needs re-aiming.</p></div>
+        <div class="q"><h3>Style presets</h3><p>Name a look — background, padding, cursor, camera — and apply it to every recording.</p></div>
+        <div class="q"><h3>A real CLI</h3><p>Record, validate, export, caption, and inspect from scripts, through the same tested engines.</p></div>
+        <div class="q"><h3>Fast where it counts</h3><p>5K styled export at ~2× real time, ~70 MB peak, zero leaks measured.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="build" class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">Open source</div>
+      <h2>Build it in two commands.</h2>
+      <div class="cli"><span class="c"># clone and build — Xcode is the only dependency</span>
+git clone https://github.com/nipunbatra/screenreel && cd screenreel
+Scripts/make-app.sh                    <span class="c"># → dist/Screenreel.app</span>
+
+<span class="c"># the same engines, from the terminal</span>
+<span class="p">aks</span> export Lecture.aks lecture.mp4 --styled --checkpoint
+<span class="p">aks</span> captions Lecture.aks subtitles.srt
+<span class="p">aks</span> export Lecture.aks clip.gif</div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="rec" style="justify-content:center; display:flex;"><span class="reel"></span>Screenreel</div>
+    <p>Built in the open for teaching. Recordings, transcripts, and exports never leave your Mac.</p>
+    <p>MIT licensed · macOS 15+ · <a href="https://github.com/nipunbatra/screenreel" style="color:var(--mint)">github.com/nipunbatra/screenreel</a></p>
+  </footer>
+
+  <script>
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => e.isIntersecting && e.target.classList.add("in")),
+      { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+  </script>
+</body>
+</html>

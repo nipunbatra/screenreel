@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aks.in/schemas/journal-record-v1.schema.json",
+  "title": "Aks journal record v1 (one JSON object per line of journal.jsonl)",
+  "type": "object",
+  "required": ["schemaVersion", "sequence", "type", "timeNs", "wallTime", "payload", "prevHash", "hash"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "type": {
+      "enum": [
+        "sessionCreated", "trackStarted", "segmentOpened", "segmentCommitted",
+        "eventChunkCommitted", "deviceChanged", "discontinuity", "fault",
+        "pause", "resume", "editSnapshotCommitted", "sessionStopped",
+        "validationCompleted", "sessionFinalized"
+      ]
+    },
+    "timeNs": { "type": "integer" },
+    "wallTime": { "type": "string", "format": "date-time" },
+    "payload": { "type": "object" },
+    "prevHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$comment": "hash = SHA-256 over the canonical JSON serialization (sorted keys, no whitespace) of the record with the `hash` field removed. prevHash of the first record is 64 zeros. Recovery trusts journal ordering up to the first record whose hash or prevHash chain fails, or the first torn line."
+}

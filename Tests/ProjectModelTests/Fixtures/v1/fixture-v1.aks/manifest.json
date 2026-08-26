@@ -1,0 +1,139 @@
+{
+  "appVersion" : "aks 0.1.0",
+  "clock" : {
+    "originAbsoluteTicks" : 100,
+    "originContinuousTicks" : 100,
+    "originWallTime" : "2026-08-24T12:17:30.991Z",
+    "timebaseDenom" : 3,
+    "timebaseNumer" : 125
+  },
+  "createdAt" : "2026-08-24T12:17:30.992Z",
+  "durationNs" : 8000000000,
+  "format" : "in.aks.project",
+  "generation" : 10,
+  "modifiedAt" : "2026-08-24T12:17:31.005Z",
+  "projectID" : "F03F1757-B965-4501-8510-6D2A756F43F4",
+  "schemaVersion" : 1,
+  "state" : "ready",
+  "tracks" : [
+    {
+      "cursorBaked" : false,
+      "displayID" : 1,
+      "enabled" : true,
+      "id" : "D8B1D3E6-290D-4211-84F0-6B32E7347AD5",
+      "segments" : [
+        {
+          "byteSize" : 13,
+          "codec" : "hevc",
+          "commitSequence" : 4,
+          "container" : "mov",
+          "id" : "47B4A215-C9E1-4287-9B0B-B83D5498E5AF",
+          "normalizedEndNs" : 4000000000,
+          "normalizedStartNs" : 0,
+          "path" : "raw/screen/display-1-000001.mov",
+          "sequenceInTrack" : 1,
+          "sha256" : "462da188c216f42cfdfc33968214c72a391a913700da3c7abd49564194eefa64",
+          "sourceEndNs" : 4000000000,
+          "sourceStartNs" : 0,
+          "toolVersion" : "aks 0.1.0",
+          "trackID" : "D8B1D3E6-290D-4211-84F0-6B32E7347AD5",
+          "trackType" : "screen"
+        },
+        {
+          "byteSize" : 13,
+          "codec" : "hevc",
+          "commitSequence" : 5,
+          "container" : "mov",
+          "id" : "46F1C966-0A26-405B-B5CA-CE2FDBB3BBC9",
+          "normalizedEndNs" : 8000000000,
+          "normalizedStartNs" : 4000000000,
+          "path" : "raw/screen/display-1-000002.mov",
+          "sequenceInTrack" : 2,
+          "sha256" : "689123f8e90ee3b0d1bee5f048294c31b6a33d675ca3b288a379f38f5d7d7520",
+          "sourceEndNs" : 8000000000,
+          "sourceStartNs" : 4000000000,
+          "toolVersion" : "aks 0.1.0",
+          "trackID" : "D8B1D3E6-290D-4211-84F0-6B32E7347AD5",
+          "trackType" : "screen"
+        }
+      ],
+      "type" : "screen"
+    },
+    {
+      "deviceName" : "Fake Mic",
+      "enabled" : true,
+      "id" : "B80AED50-87C9-4EAF-AE55-37928A5C3B36",
+      "segments" : [
+        {
+          "audio" : {
+            "channels" : 1,
+            "sampleCount" : 192000,
+            "sampleRate" : 48000
+          },
+          "byteSize" : 17,
+          "codec" : "pcmFloat32",
+          "commitSequence" : 6,
+          "container" : "caf",
+          "id" : "EC7E4ACE-AEB4-4F02-AA40-EB996A5993DF",
+          "normalizedEndNs" : 4000000000,
+          "normalizedStartNs" : 0,
+          "path" : "raw/microphone/mic-000001.caf",
+          "sequenceInTrack" : 1,
+          "sha256" : "1f9251d1fff967777fe2bb8607ee90ca2b1d0d77f60da4724cba8595594934c6",
+          "sourceEndNs" : 4000000000,
+          "sourceStartNs" : 0,
+          "toolVersion" : "aks 0.1.0",
+          "trackID" : "B80AED50-87C9-4EAF-AE55-37928A5C3B36",
+          "trackType" : "microphone"
+        },
+        {
+          "audio" : {
+            "channels" : 1,
+            "sampleCount" : 192000,
+            "sampleRate" : 48000
+          },
+          "byteSize" : 17,
+          "codec" : "pcmFloat32",
+          "commitSequence" : 7,
+          "container" : "caf",
+          "id" : "00F5087C-73BE-429C-91F3-980B1D57471D",
+          "normalizedEndNs" : 8000000000,
+          "normalizedStartNs" : 4000000000,
+          "path" : "raw/microphone/mic-000002.caf",
+          "sequenceInTrack" : 2,
+          "sha256" : "2d7d9033d5f2bd42bd6a7c499d3ed212973ed3779f679988d14203487c1d2ab7",
+          "sourceEndNs" : 8000000000,
+          "sourceStartNs" : 4000000000,
+          "toolVersion" : "aks 0.1.0",
+          "trackID" : "B80AED50-87C9-4EAF-AE55-37928A5C3B36",
+          "trackType" : "microphone"
+        }
+      ],
+      "type" : "microphone"
+    },
+    {
+      "enabled" : true,
+      "eventChunks" : [
+        {
+          "byteSize" : 393,
+          "commitSequence" : 9,
+          "compression" : "none",
+          "endNs" : 2000000,
+          "firstEventSequence" : 1,
+          "id" : "0C09EF0A-8BC2-4101-A213-035843282D9E",
+          "kind" : "cursor",
+          "lastEventSequence" : 3,
+          "path" : "events/cursor-000001.jsonl",
+          "recordCount" : 3,
+          "sequenceInTrack" : 1,
+          "sha256" : "439af6f5050e98e2738dbf8c13476463110db07e0298afe41398747e6e22124d",
+          "startNs" : 0,
+          "toolVersion" : "aks 0.1.0",
+          "trackID" : "B3B40C97-CDD5-4A53-B919-3C98079A6A8F"
+        }
+      ],
+      "id" : "B3B40C97-CDD5-4A53-B919-3C98079A6A8F",
+      "type" : "cursorEvents"
+    }
+  ]
+}

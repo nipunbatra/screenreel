@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aks.in/schemas/project-manifest-v1.schema.json",
+  "title": "Aks project manifest v1",
+  "type": "object",
+  "required": [
+    "format", "schemaVersion", "projectID", "appVersion", "createdAt",
+    "modifiedAt", "state", "clock", "tracks", "generation"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "format": { "const": "in.aks.project" },
+    "schemaVersion": { "const": 1 },
+    "projectID": { "$ref": "#/$defs/uuid" },
+    "appVersion": { "type": "string" },
+    "createdAt": { "$ref": "#/$defs/rfc3339" },
+    "modifiedAt": { "$ref": "#/$defs/rfc3339" },
+    "state": { "enum": ["recording", "recoverable", "ready"] },
+    "clock": { "$ref": "#/$defs/clockAnchor" },
+    "capture": { "type": "object" },
+    "tracks": { "type": "array", "items": { "$ref": "#/$defs/track" } },
+    "timeline": { "type": "string" },
+    "durationNs": { "type": "integer", "minimum": 0 },
+    "generation": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+    },
+    "rfc3339": { "type": "string", "format": "date-time" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "(^/)|(^\\.\\.)|(/\\.\\./)|(/\\.\\.$)" }
+    },
+    "clockAnchor": {
+      "type": "object",
+      "required": [
+        "originContinuousTicks", "originAbsoluteTicks",
+        "timebaseNumer", "timebaseDenom", "originWallTime"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "originContinuousTicks": { "type": "integer", "minimum": 0 },
+        "originAbsoluteTicks": { "type": "integer", "minimum": 0 },
+        "timebaseNumer": { "type": "integer", "minimum": 1 },
+        "timebaseDenom": { "type": "integer", "minimum": 1 },
+        "originWallTime": { "$ref": "#/$defs/rfc3339" },
+        "firstStreamTimestamps": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "track": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": {
+          "enum": [
+            "screen", "microphone", "systemAudio", "camera",
+            "cursorEvents", "clickEvents", "keyboardEvents"
+          ]
+        },
+        "displayID": { "type": "integer" },
+        "deviceUID": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "cursorBaked": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "offsetNs": { "type": "integer" },
+        "segments": { "type": "array", "items": { "$ref": "#/$defs/segment" } },
+        "eventChunks": { "type": "array", "items": { "$ref": "#/$defs/eventChunk" } },
+        "discontinuities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["startNs", "reason"],
+            "properties": {
+              "startNs": { "type": "integer" },
+              "endNs": { "type": "integer" },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": [
+        "id", "trackID", "trackType", "path", "sequenceInTrack", "container",
+        "codec", "sourceStartNs", "sourceEndNs", "normalizedStartNs",
+        "normalizedEndNs", "byteSize", "sha256", "commitSequence", "toolVersion"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "trackID": { "$ref": "#/$defs/uuid" },
+        "trackType": { "type": "string" },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sequenceInTrack": { "type": "integer", "minimum": 1 },
+        "container": { "enum": ["mov", "caf"] },
+        "codec": { "enum": ["hevc", "h264", "pcmFloat32", "pcmInt16", "pcmInt24"] },
+        "video": {
+          "type": "object",
+          "required": ["widthPx", "heightPx"],
+          "properties": {
+            "widthPx": { "type": "integer", "minimum": 1 },
+            "heightPx": { "type": "integer", "minimum": 1 },
+            "nominalFrameRate": { "type": "number", "exclusiveMinimum": 0 },
+            "frameCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "required": ["sampleRate", "channels"],
+          "properties": {
+            "sampleRate": { "type": "number", "exclusiveMinimum": 0 },
+            "channels": { "type": "integer", "minimum": 1 },
+            "layout": { "type": "string" },
+            "bitsPerSample": { "type": "integer" },
+            "floatingPoint": { "type": "boolean" },
+            "sampleCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "sourceStartNs": { "type": "integer" },
+        "sourceEndNs": { "type": "integer" },
+        "normalizedStartNs": { "type": "integer" },
+        "normalizedEndNs": { "type": "integer" },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "droppedFrames": { "type": "integer", "minimum": 0 },
+        "droppedBuffers": { "type": "integer", "minimum": 0 },
+        "discontinuityBefore": { "type": "boolean" },
+        "timingEstimated": { "type": "boolean" },
+        "commitSequence": { "type": "integer", "minimum": 1 },
+        "toolVersion": { "type": "string" }
+      }
+    },
+    "eventChunk": {
+      "type": "object",
+      "required": [
+        "id", "trackID", "kind", "path", "sequenceInTrack", "compression",
+        "firstEventSequence", "lastEventSequence", "startNs", "endNs",
+        "recordCount", "byteSize", "sha256", "commitSequence", "toolVersion"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "trackID": { "$ref": "#/$defs/uuid" },
+        "kind": { "enum": ["cursor", "clicks", "keyboard"] },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sequenceInTrack": { "type": "integer", "minimum": 1 },
+        "compression": { "enum": ["none", "zstd"] },
+        "firstEventSequence": { "type": "integer", "minimum": 0 },
+        "lastEventSequence": { "type": "integer", "minimum": 0 },
+        "startNs": { "type": "integer" },
+        "endNs": { "type": "integer" },
+        "recordCount": { "type": "integer", "minimum": 1 },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "commitSequence": { "type": "integer", "minimum": 1 },
+        "toolVersion": { "type": "string" }
+      }
+    }
+  }
+}

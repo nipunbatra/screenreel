@@ -1,0 +1,26 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.claude/settings.local.json
+
+# Generated media and recoverable application projects do not belong in Git.
+*.aks/
+*.aks-export/
+*.mp4
+*.mov
+*.m4a
+*.wav
+*.caf
+*.log
+
+# Checked-in schema fixtures are exempt from the media/project ignores above.
+!Tests/ProjectModelTests/Fixtures/**/*.aks/
+!Tests/ProjectModelTests/Fixtures/**/*.aks/**
+
+# Build artifacts
+dist/
+.build-codex/
