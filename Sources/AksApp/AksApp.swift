@@ -7,12 +7,16 @@ struct AksApplication: App {
 
     init() {
         // Opt out of persistent UI state before AppKit reads it. A signed
-        // build restores window state at launch, and after a session that
+        // build restores window state at launch; the state file is per
+        // bundle id and shared by every build, and after a session that
         // ended with the main window hidden (it is ordered out while
-        // recording) or a killed process, macOS restores ZERO windows and
-        // SwiftUI never presents one: the app "launches" as a bare Dock
-        // icon. Unsigned dev builds skipped restoration, which hid this.
-        // Equivalent to launching with -ApplePersistenceIgnoreState YES.
+        // recording), a killed process, or a build whose main scene had a
+        // different identity, macOS restores ZERO windows and SwiftUI never
+        // presents one — not even with defaultLaunchBehavior(.presented) —
+        // so the app "launches" as a bare Dock icon. Unsigned dev builds
+        // skipped restoration, which hid this. Equivalent to launching with
+        // -ApplePersistenceIgnoreState YES; the app has one fixed-layout
+        // window, so losing frame restoration costs nothing.
         UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
         // Running as a bare SwiftPM executable (swift run AksApp): become a
         // regular, activatable app with a Dock icon and key windows.
@@ -31,7 +35,10 @@ struct AksApplication: App {
     }
 
     var body: some Scene {
-        WindowGroup(Branding.displayName) {
+        // A single document window (not a WindowGroup): the menu bar and
+        // hotkeys reopen it by id after the user closes it, and there is
+        // never a second copy of the start screen.
+        Window(Branding.displayName, id: "main") {
             ContentView()
                 .environment(model)
                 .preferredColorScheme(.dark)
@@ -39,21 +46,11 @@ struct AksApplication: App {
                 // especially, so they can be pasted into a bug report.
                 .textSelection(.enabled)
                 .frame(minWidth: 960, minHeight: 600)
-                .onAppear {
-                    // Bare-executable launches start inactive; front the app
-                    // once the first window exists.
-                    NSApplication.shared.activate()
-                    model.startAutopilotIfRequested()
-                }
         }
-        // Always present the recorder window at launch. With a real code
-        // signature macOS restores window state, and a session that ended
-        // with the main window hidden (it is ordered out while recording,
-        // or the process was killed) restores ZERO windows — SwiftUI then
-        // never creates one and the app "launches" as a bare Dock icon.
-        // Unsigned dev builds skipped restoration, which hid this.
+        // Present at launch, centered (saved state is ignored — see init).
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
+        .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open Project…") {
@@ -66,21 +63,16 @@ struct AksApplication: App {
             }
         }
 
-        // Menu-bar recording control: stop or pause from any app without
-        // hunting for the HUD window.
-        MenuBarExtra(isInserted: .constant(model.isRecordingMode)) {
-            Text(model.isPaused ? "Paused · \(model.elapsedText)" : "Recording · \(model.elapsedText)")
-            Button(model.isPaused ? "Resume" : "Pause") {
-                model.togglePause()
-            }
-            Button("Stop Recording") {
-                model.stopRecording()
-                NSApplication.shared.activate()
-            }
-            .keyboardShortcut(".", modifiers: [.command, .shift])
-        } label: {
-            Image(systemName: model.isPaused ? "pause.circle.fill" : "record.circle.fill")
+        // ⌘, — menu bar, global shortcuts, countdown, recordings folder.
+        Settings {
+            SettingsView()
+                .environment(model)
+                .preferredColorScheme(.dark)
         }
+
+        // The menu-bar status item is AppKit (MenuBarController), owned by
+        // the model: it exists whenever "Show in menu bar" is on, and
+        // always while recording.
     }
 }
 
@@ -93,17 +85,33 @@ extension AppModel {
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        switch model.mode {
-        case .start:
-            StartView()
-        case .countdown(let remaining):
-            CountdownView(remaining: remaining)
-        case .recording:
-            RecordingHUDView()
-        case .editor(let player):
-            EditorView(player: player)
+        Group {
+            switch model.mode {
+            case .start:
+                StartView()
+            case .countdown(let remaining):
+                CountdownView(remaining: remaining)
+            case .recording:
+                RecordingHUDView()
+            case .editor(let player):
+                EditorView(player: player)
+            }
+        }
+        .onAppear {
+            // Bare-executable launches start inactive; front the app once
+            // the first window exists.
+            NSApplication.shared.activate()
+            // Hand the model a way to reopen this window and Settings from
+            // the menu bar / hotkeys (SwiftUI only exposes these to views).
+            model.openMainWindowAction = { openWindow(id: "main") }
+            model.openSettingsAction = { openSettings() }
+            model.installMenuBarAndHotkeys()
+            model.startAutopilotIfRequested()
+            model.startUXSelfTestIfRequested()
         }
     }
 }

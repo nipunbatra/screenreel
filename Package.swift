@@ -22,12 +22,16 @@ let package = Package(
         .target(name: "Diagnostics", dependencies: ["ProjectModel"]),
         .target(name: "EventCapture", dependencies: ["ProjectModel", "Diagnostics"]),
         .target(name: "CaptureCore", dependencies: ["ProjectModel", "Diagnostics", "EventCapture"]),
+        // App-side pure logic (preferences, hotkey presets, area-picker
+        // geometry): a library so it is unit-testable — the AksApp
+        // executable target cannot be imported by tests.
+        .target(name: "AppSupport"),
         .executableTarget(
             name: "AksApp",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
                 "PreviewEngine", "ExportEngine", "MotionEngine", "TimelineCore",
-                "RenderGraph", "Captions", "Licensing",
+                "RenderGraph", "Captions", "Licensing", "AppSupport",
             ]
         ),
         .executableTarget(
@@ -84,6 +88,7 @@ let package = Package(
         ),
         .testTarget(name: "EventCaptureTests", dependencies: ["EventCapture"]),
         .testTarget(name: "LicensingTests", dependencies: ["Licensing"]),
+        .testTarget(name: "AksAppLogicTests", dependencies: ["AppSupport"]),
         .testTarget(
             name: "IntegrationTests",
             dependencies: [

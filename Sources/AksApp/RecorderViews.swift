@@ -81,6 +81,12 @@ struct StartView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
                 .keyboardShortcut("r")
+                let hotkey = model.preferences.hotkey(for: .toggleRecording)
+                if hotkey != .off {
+                    Text("\(hotkey.label) from any app · or the menu bar")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
                 Label(model.diskSummary, systemImage: "internaldrive")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -317,6 +323,13 @@ struct StartView: View {
                 WindowThumbnailGrid()
             }
         case .area:
+            Button {
+                model.presentAreaPicker(thenRecord: false)
+            } label: {
+                Label("Select on Screen…", systemImage: "viewfinder")
+                    .frame(maxWidth: .infinity)
+            }
+            .help("Drag the area on the actual screen. \(model.preferences.hotkey(for: .recordArea).label) does the same from any app and records right away.")
             HStack(spacing: 6) {
                 areaField("X", $model.areaX)
                 areaField("Y", $model.areaY)
