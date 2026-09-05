@@ -355,14 +355,6 @@ public enum StyledExporter {
         let readers = [micReader, systemReader].compactMap { $0 }
         let denoiser = denoiseMic && micReader?.channels == 1
             ? SpectralDenoiser() : nil
-        if let denoiser {
-            // Swallow the pipeline's constant 512-sample latency up front:
-            // feed one frame of silence and discard its output, so the
-            // denoised mic stays sample-aligned with video and with the
-            // un-denoised system-audio track it is mixed against.
-            var priming = [Float](repeating: 0, count: 512)
-            denoiser.process(&priming)
-        }
         guard let audioFormat = SegmentAssembler.makeAudioFormatDescription(
             sampleRate: sampleRate, channels: mixChannels)
         else {
@@ -380,15 +372,26 @@ public enum StyledExporter {
             let frames = Int(min(Int64(blockFrames), endFrame - position))
             for index in 0..<(frames * mixChannels) { mixBuffer[index] = 0 }
             for reader in readers {
-                var trackBuffer = [Float](repeating: 0, count: frames * reader.channels)
+                let cleaningMic = denoiser != nil && reader === micReader
+                // Read real lookahead and discard the delayed head once.
+                // Feeding silence beforehand does NOT compensate latency.
+                let latency = cleaningMic ? SpectralDenoiser.latencySamples : 0
+                let discard = position == startFrame ? latency : 0
+                let readPosition = position + Int64(position == startFrame ? 0 : latency)
+                let readFrames = frames + discard
+                var trackBuffer = [Float](repeating: 0, count: readFrames * reader.channels)
                 // Walk the clip timeline: an output block may span a cut,
                 // so it reads as one or more SOURCE spans placed
                 // contiguously into the block.
                 var filled = 0
                 var hasSynthesizedSilence = false
-                while filled < frames {
+                while filled < readFrames {
+                    // Lookahead beyond the trim is zero padding. It flushes
+                    // the last real samples without reading excluded audio.
+                    let available = max(0, Int(endFrame - readPosition) - filled)
+                    if available == 0 { break }
                     let outputNs = Int64(
-                        (Double(position + Int64(filled)) / sampleRate * 1e9).rounded())
+                        (Double(readPosition + Int64(filled)) / sampleRate * 1e9).rounded())
                     let sourceNs = clipTimeline.sourceTime(forOutput: outputNs)
                     let clipIndex = clipTimeline.clipIndex(atOutput: outputNs)
                     let clip = clipTimeline.clips[clipIndex]
@@ -398,7 +401,7 @@ public enum StyledExporter {
                         (Double(remainingInSourceNs) / clip.speed).rounded())
                     let remainingInClipFrames = max(
                         1, Int(Double(remainingInOutputNs) / 1e9 * sampleRate))
-                    let take = min(frames - filled, remainingInClipFrames)
+                    let take = min(readFrames - filled, remainingInClipFrames, available)
                     var span = [Float](repeating: 0, count: take * reader.channels)
                     if abs(clip.speed - 1) < 0.001 {
                         let sourceFrame = Int64(
@@ -423,7 +426,7 @@ public enum StyledExporter {
                     for channel in 0..<mixChannels {
                         let sourceChannel = min(channel, reader.channels - 1)
                         mixBuffer[frame * mixChannels + channel] +=
-                            trackBuffer[frame * reader.channels + sourceChannel]
+                            trackBuffer[(frame + discard) * reader.channels + sourceChannel]
                     }
                 }
             }

@@ -907,6 +907,9 @@ final class AppModel {
     /// single PNG read each.
     private func loadThumbnails() {
         thumbnailTask?.cancel()
+        // A folder scan may finish after the countdown began. Avoid
+        // starting cold-cache video decodes alongside real-time capture.
+        guard case .start = mode else { return }
         let urls = projectCards.filter { $0.thumbnail == nil && !$0.isFailedStart }.map(\.url)
         thumbnailTask = Task {
             for url in urls {
@@ -1062,6 +1065,8 @@ final class AppModel {
         // The start-screen camera preview must release the device before
         // the recording session opens it.
         stopSourcePreviews()
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
         micMonitor.stop()
         guard let display = displays.first(where: { $0.displayID == selectedDisplayID }) else {
             statusMessage = "Select a display first."

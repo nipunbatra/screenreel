@@ -140,7 +140,12 @@ public final class SegmentFrameProvider {
             throw ScreenreelError.invariantViolated("\(entry.descriptor.path): no video track")
         }
         var outputSettings: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            // Preview stays in the codec's native YUV planes; Core Image
+            // performs color conversion on the GPU. NV12 uses 1.5 bytes
+            // per pixel versus BGRA's 4, without another lossy encode.
+            kCVPixelBufferPixelFormatTypeKey as String: decodeMaxHeight == nil
+                ? kCVPixelFormatType_32BGRA
+                : kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
         ]
         decodeUpscaleX = 1
         decodeUpscaleY = 1

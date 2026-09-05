@@ -6,6 +6,39 @@ import XCTest
 /// The export-time noise reducer: steady noise drops, the voice-band tone
 /// survives, silence stays silent, and block sizes never change lengths.
 final class SpectralDenoiserTests: XCTestCase {
+    func testLookaheadRecoversFirstAndLastSamplesAtExactPositions() {
+        // During warmup the gate is unity: this isolates overlap and delay
+        // from noise tracking. The sample at zero previously faded out.
+        var input = [Float](repeating: 0, count: 2049)
+        input[0] = 0.7
+        input[1] = -0.4
+        input[513] = 0.3
+        input[2048] = 0.8
+        let padded = input + [Float](repeating: 0, count: SpectralDenoiser.latencySamples)
+        let denoiser = SpectralDenoiser()
+        var output: [Float] = []
+        // Single-sample blocks exercise every partial-hop state.
+        for value in padded {
+            var block = [value]
+            denoiser.process(&block)
+            output.append(contentsOf: block)
+        }
+        XCTAssertTrue(output.prefix(SpectralDenoiser.latencySamples).allSatisfy { abs($0) < 1e-6 })
+        let aligned = Array(output.dropFirst(SpectralDenoiser.latencySamples))
+        XCTAssertEqual(aligned.count, input.count)
+        for index in input.indices {
+            XCTAssertEqual(aligned[index], input[index], accuracy: 1e-5, "sample \(index)")
+        }
+    }
+
+    func testEmptyBlocksDoNotAdvanceTheStream() {
+        let reducer = SpectralDenoiser()
+        var empty: [Float] = []
+        reducer.process(&empty)
+        var block = [Float](repeating: 0.2, count: 64)
+        reducer.process(&block)
+        XCTAssertEqual(block, [Float](repeating: 0, count: 64))
+    }
 
     /// Speech-like signal: tone bursts (0.3 s on / 0.2 s off — syllable
     /// cadence) over optional steady noise. Minimum-statistics denoisers

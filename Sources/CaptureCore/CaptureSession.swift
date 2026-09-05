@@ -554,22 +554,19 @@ public actor CaptureSession {
     }
 
     private func wireSources() async throws {
+        // Encoder setup happens before incoming compositor frames can fill
+        // the bounded handoff (especially at Retina sizes).
+        try await videoWriter?.prepare()
         // Video pipeline: bounded handoff from the capture callback to the
         // writer actor. The capture-side yield never blocks; overflow is
         // counted and reported, never hidden.
-        // 6, not more: each buffered frame pins one of SCK's 8 pool
-        // surfaces on the zero-copy path; overflow is a counted drop,
-        // pool starvation is silent.
+        // Reserve three compositor surfaces for work outside this queue.
         let (videoStream, videoContinuation) = AsyncStream.makeStream(
-            of: VideoFrame.self, bufferingPolicy: .bufferingOldest(6))
+            of: VideoFrame.self,
+            bufferingPolicy: .bufferingOldest(CaptureBufferBudget.pendingScreenFrames))
         self.videoContinuation = videoContinuation
-        try await screenSource?.start { [weak self] frame in
-            guard let self else { return }
-            let result = videoContinuation.yield(frame)
-            if case .dropped = result {
-                Task { await self.noteDroppedBuffer(stream: "video") }
-            }
-        }
+        // Sources may emit while start() is awaiting device readiness.
+        // A consumer must already be draining the handoff at that point.
         let videoWriter = self.videoWriter
         consumerTasks.append(Task { [weak self] in
             for await frame in videoStream {
@@ -584,18 +581,19 @@ public actor CaptureSession {
                 }
             }
         })
+        try await screenSource?.start { [weak self] frame in
+            guard let self else { return }
+            let result = videoContinuation.yield(frame)
+            if case .dropped = result {
+                Task { await self.noteDroppedBuffer(stream: "video") }
+            }
+        }
 
         if let cameraSource, let cameraWriter {
             let (cameraStream, cameraContinuation) = AsyncStream.makeStream(
-                of: VideoFrame.self, bufferingPolicy: .bufferingOldest(16))
+                of: VideoFrame.self,
+                bufferingPolicy: .bufferingOldest(CaptureBufferBudget.pendingCameraFrames))
             self.cameraContinuation = cameraContinuation
-            try await cameraSource.start { [weak self] frame in
-                guard let self else { return }
-                let result = cameraContinuation.yield(frame)
-                if case .dropped = result {
-                    Task { await self.noteDroppedBuffer(stream: "camera") }
-                }
-            }
             consumerTasks.append(Task { [weak self] in
                 for await frame in cameraStream {
                     guard let live = self?.live else { break }
@@ -608,19 +606,19 @@ public actor CaptureSession {
                     }
                 }
             })
+            try await cameraSource.start { [weak self] frame in
+                guard let self else { return }
+                let result = cameraContinuation.yield(frame)
+                if case .dropped = result {
+                    Task { await self.noteDroppedBuffer(stream: "camera") }
+                }
+            }
         }
 
         if let micSource, let micWriter {
             let (micStream, micContinuation) = AsyncStream.makeStream(
                 of: AudioChunk.self, bufferingPolicy: .bufferingOldest(64))
             self.micContinuation = micContinuation
-            try await micSource.start { [weak self] chunk in
-                guard let self else { return }
-                let result = micContinuation.yield(chunk)
-                if case .dropped = result {
-                    Task { await self.noteDroppedBuffer(stream: "microphone") }
-                }
-            }
             consumerTasks.append(Task { [weak self] in
                 for await chunk in micStream {
                     guard let live = self?.live else { break }
@@ -634,19 +632,19 @@ public actor CaptureSession {
                     }
                 }
             })
+            try await micSource.start { [weak self] chunk in
+                guard let self else { return }
+                let result = micContinuation.yield(chunk)
+                if case .dropped = result {
+                    Task { await self.noteDroppedBuffer(stream: "microphone") }
+                }
+            }
         }
 
         if let systemSource, let systemWriter {
             let (systemStream, systemContinuation) = AsyncStream.makeStream(
                 of: AudioChunk.self, bufferingPolicy: .bufferingOldest(64))
             self.systemContinuation = systemContinuation
-            try await systemSource.start { [weak self] chunk in
-                guard let self else { return }
-                let result = systemContinuation.yield(chunk)
-                if case .dropped = result {
-                    Task { await self.noteDroppedBuffer(stream: "systemAudio") }
-                }
-            }
             consumerTasks.append(Task { [weak self] in
                 for await chunk in systemStream {
                     guard let live = self?.live else { break }
@@ -659,6 +657,13 @@ public actor CaptureSession {
                     }
                 }
             })
+            try await systemSource.start { [weak self] chunk in
+                guard let self else { return }
+                let result = systemContinuation.yield(chunk)
+                if case .dropped = result {
+                    Task { await self.noteDroppedBuffer(stream: "systemAudio") }
+                }
+            }
         }
 
     }
@@ -739,6 +744,8 @@ public actor CaptureSession {
             fields["droppedVideoFrames"] = .integer(Int64(videoWriter.counters.droppedFrames))
         }
         fields["droppedBuffers"] = .integer(Int64(droppedBufferCount))
+        fields["screenSurfaceBudget"] = .integer(Int64(CaptureBufferBudget.screenSurfaces))
+        fields["pendingScreenFrameBudget"] = .integer(Int64(CaptureBufferBudget.pendingScreenFrames))
         await perfLog?.log(.info, "perf", timeNs: clock.nowNs(), fields: fields)
         guard !stopping else { return }
 

@@ -138,8 +138,8 @@ public struct CaptureConfiguration: Codable, Sendable {
     public var cameraDeviceID: String?
     public var audioSampleRate: Double
     public var segmentDurationSeconds: Double
-    /// Average encode bitrate as bits per pixel per frame; 0.1 ≈ 25 Mb/s for
-    /// 4K30, a visually lossless target for screen content.
+    /// Average encode bitrate as bits per pixel per frame; 0.1 ≈ 25 Mb/s
+    /// for 4K30. Lossy compression; native dimensions preserve text detail.
     public var bitsPerPixelPerFrame: Double
     /// Record keyDown/flagsChanged events for the shortcut overlay.
     /// Optional so old manifests decode unchanged; nil/false = off. OFF by
@@ -209,6 +209,7 @@ public struct CaptureConfiguration: Codable, Sendable {
         case microphoneEnabled, microphoneDeviceUID, microphoneDeviceName
         case systemAudioEnabled, cameraEnabled, cameraDeviceID
         case audioSampleRate, segmentDurationSeconds, bitsPerPixelPerFrame
+        case captureKeystrokes
     }
 
     public init(from decoder: Decoder) throws {
@@ -235,5 +236,6 @@ public struct CaptureConfiguration: Codable, Sendable {
         self.audioSampleRate = try c.decode(Double.self, forKey: .audioSampleRate)
         self.segmentDurationSeconds = try c.decode(Double.self, forKey: .segmentDurationSeconds)
         self.bitsPerPixelPerFrame = try c.decode(Double.self, forKey: .bitsPerPixelPerFrame)
+        self.captureKeystrokes = try c.decodeIfPresent(Bool.self, forKey: .captureKeystrokes)
     }
 }

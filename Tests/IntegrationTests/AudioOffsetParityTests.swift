@@ -17,6 +17,34 @@ import XCTest
 final class AudioOffsetParityTests: XCTestCase {
     private var directory: URL!
 
+    /// The denoiser's 512-sample delay must be removed by real lookahead,
+    /// including when the export starts inside the take. Silent priming
+    /// previously moved the voice by about 10.7 ms.
+    func testDenoisedExportStartsWithTheSameAudioAsRawMix() async throws {
+        let project = try await SyntheticProjectFactory.make(
+            in: directory, durationNs: 500_000_000, withEvents: false, pace: 1)
+        let composition = try ProjectComposition(projectURL: project)
+        for trim in [Int64(0), 100_000_000] {
+            try composition.updateEdits {
+                $0.trimStartNs = trim
+                $0.micNoiseReduction = false
+            }
+            let raw = directory.appendingPathComponent("plain-\(trim).mp4")
+            _ = try await StyledExporter.export(
+                projectAt: project, to: raw, options: .init(outputHeight: 180))
+            try composition.updateEdits { $0.micNoiseReduction = true }
+            let cleaned = directory.appendingPathComponent("clean-\(trim).mp4")
+            _ = try await StyledExporter.export(
+                projectAt: project, to: cleaned, options: .init(outputHeight: 180))
+            let plainOnset = try await firstLoudFrame(of: raw)
+            let cleanedOnset = try await firstLoudFrame(of: cleaned)
+            let delta = abs(try XCTUnwrap(plainOnset) - XCTUnwrap(cleanedOnset))
+            // AAC can smear a transient slightly. 64 samples allows that
+            // but catches the former 512-sample pipeline error decisively.
+            XCTAssertLessThanOrEqual(delta, 64, "denoising shifted the voice at trim \(trim)")
+        }
+    }
+
     override func setUp() {
         super.setUp()
         AtomicFile.fullFsync = false

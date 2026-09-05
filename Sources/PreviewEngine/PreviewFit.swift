@@ -10,6 +10,21 @@ import Foundation
 /// bounds. Everything the gestures need is derived here so the math has one
 /// home and a unit test.
 public enum PreviewFit {
+    /// Match actual Retina surface pixels during playback. Only active
+    /// scrubbing trades sharpness for latency; a 1440p ceiling bounds GPU
+    /// work and matches the preview decoder (exports use native pixels).
+    public static func renderSize(
+        source: SIMD2<Double>, surface: SIMD2<Double>,
+        aspect: Double, scrubbing: Bool = false
+    ) -> SIMD2<Double> {
+        guard aspect.isFinite, aspect > 0,
+            source.x.isFinite, source.y.isFinite, source.x > 0, source.y > 0,
+            surface.x.isFinite, surface.y.isFinite, surface.x > 0, surface.y > 0
+        else { return SIMD2(2, 2) }
+        var height = min(surface.y, surface.x / aspect, source.y, 1440)
+        if scrubbing { height /= 2 }
+        return SIMD2(max(2, (height * aspect).rounded()), max(2, height.rounded()))
+    }
 
     /// The centered, aspect-fitted rectangle of a `canvasSize` canvas inside
     /// `container` (same unit for both — points or pixels). Nil when either

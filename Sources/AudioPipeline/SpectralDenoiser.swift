@@ -9,6 +9,9 @@ import Foundation
 ///
 /// This never touches raw project audio — it runs on the export path only.
 public final class SpectralDenoiser {
+    /// Constant streaming delay, independent of caller block size. Offline
+    /// consumers compensate with lookahead, not by feeding silent priming.
+    public static let latencySamples = 512
     // 512-sample frames at 48 kHz ≈ 10.7 ms, 50% overlap (Hann COLA).
     private let frameSize = 512
     private let hopSize = 256
@@ -18,14 +21,17 @@ public final class SpectralDenoiser {
     private let log2n: vDSP_Length
     private let window: [Float]
 
-    /// Carry-over between process() calls.
-    private var inputCarry: [Float] = []
-    /// Produced-but-not-yet-emitted samples. Primed with one frame of
-    /// zeros so the pipeline has a CONSTANT 512-sample (10.7 ms) latency:
-    /// output then never depends on how callers chop the stream into
-    /// blocks (the earlier pending-output scheme injected zeros mid-stream
-    /// on ragged block sizes — caught by the partition-invariance test).
-    private var outputFIFO: [Float]
+    // Fixed storage: no frame slices, growing FIFOs, or removeFirst copies
+    // on the audio path. Half a frame of leading silence gives the first
+    // real samples both Hann overlaps instead of fading the take's onset.
+    private var inputFrame = [Float](repeating: 0, count: 512)
+    private var inputCount = 256
+    private var outputHop = [Float](repeating: 0, count: 256)
+    private var hopPosition = 0
+    private var windowed = [Float](repeating: 0, count: 512)
+    private var real = [Float](repeating: 0, count: 256)
+    private var imag = [Float](repeating: 0, count: 256)
+    private var output = [Float](repeating: 0, count: 512)
     private var overlapTail: [Float]
     /// Rising-minimum noise floor per bin and smoothed gains. The floor
     /// tracks minima of the TIME-SMOOTHED magnitude — raw white-noise
@@ -57,7 +63,6 @@ public final class SpectralDenoiser {
         vDSP_hann_window(&hann, vDSP_Length(frameSize), Int32(vDSP_HANN_DENORM))
         window = hann
         overlapTail = [Float](repeating: 0, count: frameSize - hopSize)
-        outputFIFO = [Float](repeating: 0, count: frameSize)
         smoothedMagnitude = [Float](repeating: -1, count: frameSize / 2 + 1)
         currentWindowMin = [Float](
             repeating: .greatestFiniteMagnitude, count: frameSize / 2 + 1)
@@ -87,40 +92,39 @@ public final class SpectralDenoiser {
     private var learningEnabled = true
 
     private func processBody(_ samples: inout [Float]) {
-        inputCarry.append(contentsOf: samples)
-        var start = 0
-        while start + frameSize <= inputCarry.count {
-            let frame = Array(inputCarry[start..<start + frameSize])
-            outputFIFO.append(contentsOf: processFrame(frame))
-            start += hopSize
-        }
-        inputCarry.removeFirst(start)
-
-        // With the primed FIFO, production keeps pace with input (bounded
-        // carry < frameSize), so the FIFO cannot run dry mid-stream; the
-        // guard exists for safety only.
-        let needed = samples.count
-        if outputFIFO.count >= needed {
-            for index in 0..<needed { samples[index] = outputFIFO[index] }
-            outputFIFO.removeFirst(needed)
-        } else {
-            let deficit = needed - outputFIFO.count
-            for index in 0..<deficit { samples[index] = 0 }
-            for index in 0..<outputFIFO.count {
-                samples[deficit + index] = outputFIFO[index]
+        samples.withUnsafeMutableBufferPointer { samples in
+            var position = 0
+            while position < samples.count {
+                let count = min(frameSize - inputCount, samples.count - position)
+                inputFrame.withUnsafeMutableBufferPointer { input in
+                    input.baseAddress!.advanced(by: inputCount).update(
+                        from: samples.baseAddress!.advanced(by: position), count: count)
+                }
+                outputHop.withUnsafeBufferPointer { hop in
+                    samples.baseAddress!.advanced(by: position).update(
+                        from: hop.baseAddress!.advanced(by: hopPosition), count: count)
+                }
+                inputCount += count
+                hopPosition += count
+                position += count
+                if inputCount == frameSize {
+                    processFrame()
+                    inputFrame.withUnsafeMutableBufferPointer { input in
+                        input.baseAddress!.update(
+                            from: input.baseAddress!.advanced(by: hopSize), count: hopSize)
+                    }
+                    inputCount = hopSize
+                    hopPosition = 0
+                }
             }
-            outputFIFO.removeAll(keepingCapacity: true)
         }
     }
 
     /// One Hann-windowed frame → gated spectrum → overlap-added hop output.
-    private func processFrame(_ frame: [Float]) -> [Float] {
+    private func processFrame() {
         let frozen = !learningEnabled
-        var windowed = [Float](repeating: 0, count: frameSize)
-        vDSP_vmul(frame, 1, window, 1, &windowed, 1, vDSP_Length(frameSize))
+        vDSP_vmul(inputFrame, 1, window, 1, &windowed, 1, vDSP_Length(frameSize))
 
-        var real = [Float](repeating: 0, count: bins)
-        var imag = [Float](repeating: 0, count: bins)
         windowed.withUnsafeBufferPointer { pointer in
             pointer.baseAddress!.withMemoryRebound(
                 to: DSPComplex.self, capacity: bins
@@ -171,18 +175,21 @@ public final class SpectralDenoiser {
             return smoothedGain[bin]
         }
 
-        let dcGain = gate(magnitude: abs(real[0]), bin: 0)
-        real[0] *= dcGain
-        let nyquistGain = gate(magnitude: abs(imag[0]), bin: bins)
-        imag[0] *= nyquistGain
-        for bin in 1..<bins {
-            let magnitude = (real[bin] * real[bin] + imag[bin] * imag[bin]).squareRoot()
-            let gain = gate(magnitude: magnitude, bin: bin)
-            real[bin] *= gain
-            imag[bin] *= gain
+        real.withUnsafeMutableBufferPointer { real in
+            imag.withUnsafeMutableBufferPointer { imag in
+                let dcGain = gate(magnitude: abs(real[0]), bin: 0)
+                real[0] *= dcGain
+                let nyquistGain = gate(magnitude: abs(imag[0]), bin: bins)
+                imag[0] *= nyquistGain
+                for bin in 1..<bins {
+                    let magnitude = (real[bin] * real[bin] + imag[bin] * imag[bin]).squareRoot()
+                    let gain = gate(magnitude: magnitude, bin: bin)
+                    real[bin] *= gain
+                    imag[bin] *= gain
+                }
+            }
         }
 
-        var output = [Float](repeating: 0, count: frameSize)
         real.withUnsafeMutableBufferPointer { realBuffer in
             imag.withUnsafeMutableBufferPointer { imagBuffer in
                 var split = DSPSplitComplex(
@@ -202,13 +209,12 @@ public final class SpectralDenoiser {
         vDSP_vsmul(output, 1, &scale, &output, 1, vDSP_Length(frameSize))
 
         // 50% OLA: emit tail + first half, keep second half as new tail.
-        var hop = [Float](repeating: 0, count: hopSize)
-        for index in 0..<hopSize {
-            hop[index] = overlapTail[index] + output[index]
+        vDSP_vadd(overlapTail, 1, output, 1, &outputHop, 1, vDSP_Length(hopSize))
+        output.withUnsafeBufferPointer { output in
+            overlapTail.withUnsafeMutableBufferPointer { tail in
+                tail.baseAddress!.update(
+                    from: output.baseAddress!.advanced(by: hopSize), count: hopSize)
+            }
         }
-        for index in 0..<(frameSize - hopSize) {
-            overlapTail[index] = output[index + hopSize]
-        }
-        return hop
     }
 }

@@ -33,6 +33,7 @@ final class ConfigurationCompatTests: XCTestCase {
         XCTAssertEqual(decoded.eventOffsetYPx, 0)
         XCTAssertFalse(decoded.cameraEnabled)
         XCTAssertNil(decoded.cameraDeviceID)
+        XCTAssertFalse(decoded.captureKeystrokesEnabled)
     }
 
     func testModernConfigurationRoundTrips() throws {
@@ -70,6 +71,14 @@ final class ConfigurationCompatTests: XCTestCase {
         XCTAssertEqual(CaptureSourceKind.window.rawValue, "window")
         XCTAssertEqual(CaptureSourceKind.area.rawValue, "area")
         XCTAssertEqual(CaptureSourceKind.application.rawValue, "application")
+    }
+
+    func testExplicitKeyboardOptInSurvivesManifestRoundTrip() throws {
+        let original = CaptureConfiguration(
+            widthPx: 1920, heightPx: 1080, captureKeystrokes: true)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(CaptureConfiguration.self, from: data)
+        XCTAssertTrue(decoded.captureKeystrokesEnabled)
     }
 
     func testGarbageConfigurationFailsCleanly() {

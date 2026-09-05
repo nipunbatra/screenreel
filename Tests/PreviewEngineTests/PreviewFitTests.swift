@@ -8,6 +8,27 @@ import XCTest
 /// These pin that math: it must agree with the aspect-fit the old
 /// `Image(...).aspectRatio(.fit)` path produced.
 final class PreviewFitTests: XCTestCase {
+    func testPlaybackPreservesRetinaSurfacePixels() {
+        let size = PreviewFit.renderSize(
+            source: SIMD2(5120, 2880), surface: SIMD2(1920, 1080), aspect: 16.0 / 9)
+        XCTAssertEqual(size, SIMD2(1920, 1080))
+        let scrub = PreviewFit.renderSize(
+            source: SIMD2(5120, 2880), surface: SIMD2(1920, 1080),
+            aspect: 16.0 / 9, scrubbing: true)
+        XCTAssertEqual(scrub, SIMD2(960, 540))
+    }
+
+    func testPreviewRemainsBoundedOnLargeDisplaysAndSmallSources() {
+        XCTAssertEqual(PreviewFit.renderSize(
+            source: SIMD2(7680, 4320), surface: SIMD2(7680, 4320),
+            aspect: 16.0 / 9), SIMD2(2560, 1440))
+        XCTAssertEqual(PreviewFit.renderSize(
+            source: SIMD2(640, 360), surface: SIMD2(1920, 1080),
+            aspect: 16.0 / 9), SIMD2(640, 360))
+        XCTAssertEqual(PreviewFit.renderSize(
+            source: SIMD2(640, 360), surface: SIMD2(1000, 800),
+            aspect: .nan), SIMD2(2, 2))
+    }
 
     func testExactFitIsIdentity() {
         let rect = PreviewFit.fittedRect(

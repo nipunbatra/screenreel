@@ -33,7 +33,7 @@ public actor RecordingCoordinator {
     private var capture: SCKCapture?
     private var camera: CameraCapture?
     private var tap: EventTapSource?
-    private var eventContinuation: AsyncStream<EventRecord>.Continuation?
+    private var eventHandoff: EventHandoff?
     private var eventPump: Task<Void, Never>?
     public private(set) var eventsActive = false
     /// Keeps App Nap and idle sleep away for the whole session (the app
@@ -140,15 +140,15 @@ public actor RecordingCoordinator {
             onCommit: { [session] chunk in
                 try await session.commitEventChunk(chunk)
             })
-        let (stream, continuation) = AsyncStream.makeStream(of: EventRecord.self)
-        self.eventContinuation = continuation
+        let handoff = EventHandoff()
+        self.eventHandoff = handoff
         let descriptorStore = CursorDescriptorStore(layout: session.projectLayout())
         let clock = session.sessionClock
         let source = EventTapSource(
             descriptorStore: descriptorStore,
             normalizer: { hostNs in clock.normalizeHostNs(hostNs) },
             handler: { record in
-                continuation.yield(record)
+                handoff.yield(record)
             },
             // Event pixels must live in the recorded frame's pixel space,
             // which at non-native capture differs from the display's
@@ -159,16 +159,25 @@ public actor RecordingCoordinator {
         self.tap = source
         self.eventsActive = true
         // Tap health rides along in the per-second perf trace.
-        await session.setPerfProbe { source.perfCounters() }
+        await session.setPerfProbe {
+            var counters = source.perfCounters()
+            counters["droppedEvents"] = .integer(Int64(handoff.droppedEvents))
+            return counters
+        }
         let warn = onWarning
         self.eventPump = Task { [session] in
-            for await record in stream {
+            for await record in handoff.stream {
                 do {
                     try await store.append(record)
                 } catch {
                     await session.noteExternalFault(
                         kind: "events.commitFailed", message: "\(error)")
                 }
+            }
+            if handoff.droppedEvents > 0 {
+                await session.noteExternalFault(
+                    kind: "events.bufferOverflow",
+                    message: "\(handoff.droppedEvents) input events dropped while event storage was busy")
             }
             do {
                 try await store.finish()
@@ -200,8 +209,8 @@ public actor RecordingCoordinator {
     private func closeExternalProducers() async {
         tap?.stop()
         tap = nil
-        eventContinuation?.finish()
-        eventContinuation = nil
+        eventHandoff?.finish()
+        eventHandoff = nil
         await eventPump?.value
         eventPump = nil
         activity?.end()

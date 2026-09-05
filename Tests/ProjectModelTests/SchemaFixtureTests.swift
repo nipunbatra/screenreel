@@ -16,7 +16,9 @@ final class SchemaFixtureTests: XCTestCase {
     }
 
     private var v1URL: URL {
-        Self.fixturesRoot.appendingPathComponent("v1/fixture-v1.screenreel")
+        // Keep the released v1 fixture byte-for-byte, including its legacy
+        // extension. Renaming this lookup silently skipped compatibility.
+        Self.fixturesRoot.appendingPathComponent("v1/fixture-v1.aks")
     }
 
     override func setUp() {
@@ -45,9 +47,8 @@ final class SchemaFixtureTests: XCTestCase {
     }
 
     func testV1FixtureRemainsReadable() async throws {
-        guard FileManager.default.fileExists(atPath: v1URL.path) else {
-            throw XCTSkip("fixture not generated yet")
-        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: v1URL.path),
+            "The checked-in v1 compatibility fixture must be present")
         let loaded = try ProjectPackage.load(at: v1URL)
         XCTAssertEqual(loaded.manifest.schemaVersion, 1)
         XCTAssertEqual(loaded.manifest.state, .ready)
@@ -61,9 +62,7 @@ final class SchemaFixtureTests: XCTestCase {
 
     func testV1FixtureEventChunkParses() throws {
         let chunkURL = v1URL.appendingPathComponent("events/cursor-000001.jsonl")
-        guard let data = try? Data(contentsOf: chunkURL) else {
-            throw XCTSkip("fixture not generated yet")
-        }
+        let data = try Data(contentsOf: chunkURL)
         let text = try XCTUnwrap(String(data: data, encoding: .utf8))
         var lineNumber = 0
         for line in text.split(separator: "\n") {

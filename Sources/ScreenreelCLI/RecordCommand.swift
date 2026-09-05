@@ -245,7 +245,7 @@ struct Record: AsyncParsableCommand {
         // Cursor/click events via a listen-only event tap.
         var tap: EventTapSource?
         var eventPump: Task<Void, Never>?
-        var eventContinuation: AsyncStream<EventRecord>.Continuation?
+        var eventHandoff: EventHandoff?
         if events {
             if EventTapSource.hasPermission() || EventTapSource.requestPermission() {
                 let cursorTrackID = try await session.registerEventTrack(type: .cursorEvents)
@@ -263,30 +263,39 @@ struct Record: AsyncParsableCommand {
                     onCommit: { [session] chunk in
                         try await session.commitEventChunk(chunk)
                     })
-                let (stream, continuation) = AsyncStream.makeStream(of: EventRecord.self)
-                eventContinuation = continuation
+                let handoff = EventHandoff()
+                eventHandoff = handoff
                 let descriptorStore = CursorDescriptorStore(layout: session.projectLayout())
                 let clock = session.sessionClock
                 let source = EventTapSource(
                     descriptorStore: descriptorStore,
                     normalizer: { hostNs in clock.normalizeHostNs(hostNs) },
                     handler: { record in
-                        continuation.yield(record)
+                        handoff.yield(record)
                     },
                     scaleOverride: configuration.displayScale,
                     captureKeyboard: keystrokes)
                 try source.start()
                 tap = source
-                producers.set(tap: source, continuation: continuation)
-                await session.setPerfProbe { source.perfCounters() }
+                producers.set(tap: source, handoff: handoff)
+                await session.setPerfProbe {
+                    var counters = source.perfCounters()
+                    counters["droppedEvents"] = .integer(Int64(handoff.droppedEvents))
+                    return counters
+                }
                 eventPump = Task { [session] in
-                    for await record in stream {
+                    for await record in handoff.stream {
                         do {
                             try await store.append(record)
                         } catch {
                             await session.noteExternalFault(
                                 kind: "events.commitFailed", message: "\(error)")
                         }
+                    }
+                    if handoff.droppedEvents > 0 {
+                        await session.noteExternalFault(
+                            kind: "events.bufferOverflow",
+                            message: "\(handoff.droppedEvents) input events dropped while event storage was busy")
                     }
                     do {
                         try await store.finish()
@@ -304,7 +313,7 @@ struct Record: AsyncParsableCommand {
         await Self.sleepUntilDeadlineOrInterrupt(durationNs: durationNs)
 
         tap?.stop()
-        eventContinuation?.finish()
+        eventHandoff?.finish()
         await eventPump?.value
         let summary = try await session.stop()
         printSummary(summary)
@@ -363,24 +372,24 @@ struct Record: AsyncParsableCommand {
 final class ExternalProducers: @unchecked Sendable {
     private let lock = NSLock()
     private var tap: EventTapSource?
-    private var continuation: AsyncStream<EventRecord>.Continuation?
+    private var handoff: EventHandoff?
 
-    func set(tap: EventTapSource, continuation: AsyncStream<EventRecord>.Continuation) {
+    func set(tap: EventTapSource, handoff: EventHandoff) {
         lock.lock()
         self.tap = tap
-        self.continuation = continuation
+        self.handoff = handoff
         lock.unlock()
     }
 
     func close() {
         lock.lock()
         let tap = self.tap
-        let continuation = self.continuation
+        let handoff = self.handoff
         self.tap = nil
-        self.continuation = nil
+        self.handoff = nil
         lock.unlock()
         tap?.stop()
-        continuation?.finish()
+        handoff?.finish()
     }
 }
 

@@ -240,12 +240,18 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
     // MARK: - Stream lifecycle
 
     private func startIfNeeded() async throws {
-        let alreadyStarted = state.withLock { handlers in
-            let was = handlers.started
+        let shouldStart = state.withLock { handlers in
+            // The facades share one stream. Wait until every enabled
+            // track has a handler so startup cannot discard early audio
+            // or fill the screen handoff before its consumer exists.
+            guard !handlers.started, handlers.screen != nil,
+                !configuration.microphoneEnabled || handlers.mic != nil,
+                !configuration.systemAudioEnabled || handlers.system != nil
+            else { return false }
             handlers.started = true
-            return was
+            return true
         }
-        guard !alreadyStarted else { return }
+        guard shouldStart else { return }
         do {
             try await startStream()
         } catch {
@@ -316,11 +322,10 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
         // Capture in sRGB so downstream encoding can tag BT.709 coherently;
         // untagged output made players guess and wash the colors out.
         streamConfiguration.colorSpaceName = CGColorSpace.sRGB
-        // Zero-copy pins SCK's own IOSurfaces through the handoff stream
-        // and the encoder; the pool must be at least as deep as everything
-        // we can pin at once or SCK silently stops delivering (no callback,
-        // no counted drop). 8 surfaces vs a 6-slot handoff + ~2 in-flight.
-        streamConfiguration.queueDepth = 8
+        // Two pending frames plus headroom for delivery, encoding and the
+        // compositor. Shared with CaptureSession: changing only one side
+        // either wastes memory or silently starves the surface pool.
+        streamConfiguration.queueDepth = CaptureBufferBudget.screenSurfaces
         if configuration.systemAudioEnabled {
             streamConfiguration.capturesAudio = true
             streamConfiguration.sampleRate = Int(configuration.audioSampleRate)

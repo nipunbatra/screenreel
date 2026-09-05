@@ -3,6 +3,7 @@ import CoreVideo
 import Foundation
 import ProjectModel
 import Synchronization
+import VideoToolbox
 
 /// Lock-free mirrors of a writer's frame counters. Observers (the session
 /// heartbeat's perf trace, the stop summary) read these without queueing
@@ -270,6 +271,18 @@ public actor VideoSegmentWriter {
         }
     }
 
+    /// Warm known-size screen encoders before the source delivers frames.
+    /// No segment is journaled until a real frame is appended. Camera
+    /// dimensions are learned from its first frame, so it skips this step.
+    public func prepare() throws {
+        guard current == nil, standby == nil,
+            settings.widthPx > 0, settings.heightPx > 0
+        else { return }
+        resolvedWidthPx = settings.widthPx
+        resolvedHeightPx = settings.heightPx
+        standby = try makeWriterStack(sequence: nextSequence)
+    }
+
     /// Close the open tail segment and wait for every commit to finish.
     public func finish() async throws {
         rotate()
@@ -320,6 +333,7 @@ public actor VideoSegmentWriter {
             * settings.nominalFrameRate * settings.bitsPerPixelPerFrame
         var compression: [String: Any] = [
             AVVideoAverageBitRateKey: Int(bitrate),
+            AVVideoExpectedSourceFrameRateKey: settings.nominalFrameRate,
             AVVideoAllowFrameReorderingKey: false,
             // Dense keyframes make backward scrubbing ~5× cheaper (decode
             // restarts at the nearest keyframe); screen content compresses
@@ -331,6 +345,11 @@ public actor VideoSegmentWriter {
         }
         let outputSettings: [String: Any] = [
             AVVideoCodecKey: codec,
+            // Recording must never quietly fall back to a CPU encoder.
+            // At Retina resolutions that can monopolize the whole Mac.
+            AVVideoEncoderSpecificationKey: [
+                kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder as String: true
+            ],
             AVVideoWidthKey: resolvedWidthPx,
             AVVideoHeightKey: resolvedHeightPx,
             AVVideoCompressionPropertiesKey: compression,
@@ -352,7 +371,10 @@ public actor VideoSegmentWriter {
         writer.add(input)
         guard writer.startWriting() else {
             let error = writer.error.map { "\($0)" } ?? "unknown"
-            throw ScreenreelError.invariantViolated("AVAssetWriter startWriting failed: \(error)")
+            throw ScreenreelError.invariantViolated(
+                "Hardware \(settings.codec.rawValue) recording encoder could not start at "
+                    + "\(resolvedWidthPx)×\(resolvedHeightPx): \(error). "
+                    + "Close other recording/export apps or choose a smaller capture area and retry.")
         }
         return Standby(
             writer: writer, input: input, adaptor: adaptor,

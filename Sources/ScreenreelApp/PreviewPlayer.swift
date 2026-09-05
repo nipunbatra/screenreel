@@ -271,21 +271,19 @@ final class PreviewPlayer {
             return
         }
         surfacePx = px
-        enqueueOutputSize(previewOutputSize(halved: isPlaying), renderAt: timeNs)
+        enqueueOutputSize(previewOutputSize(halved: scrubbing), renderAt: timeNs)
     }
 
     /// Preview canvas size honoring the edit document's aspect ratio,
     /// fitted to the actual surface and never above source resolution.
-    /// `halved` renders playback at half linear resolution (quarter the
-    /// pixels) — parked frames always use full quality.
+    /// `halved` is only for active scrubbing. Playback retains surface
+    /// pixels up to the decoder's 1440p ceiling.
     private func previewOutputSize(halved: Bool = false) -> SIMD2<Double> {
         let aspect = edits.style.canvasAspect
             ?? (sourceSize.x / max(sourceSize.y, 1))
-        let surface = surfacePx ?? SIMD2(1280, 800)
-        var height = min(surface.y, surface.x / aspect)
-        height = max(180, min(height, sourceSize.y))
-        if halved { height = max(180, height / 2) }
-        return SIMD2(max(2, (height * aspect).rounded()), height.rounded())
+        return PreviewFit.renderSize(
+            source: sourceSize, surface: surfacePx ?? SIMD2(1280, 800),
+            aspect: aspect, scrubbing: halved)
     }
 
     func shutdown() {
@@ -326,9 +324,11 @@ final class PreviewPlayer {
         let plan = PreviewAudioPlan.entries(
             timeline: effectiveClipTimeline, fromOutput: startNs)
         enqueueAudio { await $0.play(plan: plan) }
-        // Playback renders at half resolution (quarter the pixels); the
-        // parked frame after pause returns to full quality via the chain.
-        enqueueOutputSize(previewOutputSize(halved: true))
+        // A readable preview at playback speed; reduced quality is reserved
+        // for rapid seeks, not every frame of the finished recording.
+        scrubSettleTask?.cancel()
+        scrubbing = false
+        enqueueOutputSize(previewOutputSize())
         playbackTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, self.isPlaying else { return }
@@ -431,7 +431,7 @@ final class PreviewPlayer {
                 self.remapWaveform()
                 ProjectThumbnailer.invalidate(for: self.projectURL)
                 self.enqueueOutputSize(
-                    self.previewOutputSize(halved: self.isPlaying),
+                    self.previewOutputSize(halved: self.scrubbing),
                     renderAt: self.timeNs)
             } catch {
                 // The document never changed: withdraw the history step so
@@ -471,7 +471,7 @@ final class PreviewPlayer {
                 self.remapWaveform()
                 ProjectThumbnailer.invalidate(for: self.projectURL)
                 self.enqueueOutputSize(
-                    self.previewOutputSize(halved: self.isPlaying),
+                    self.previewOutputSize(halved: self.scrubbing),
                     renderAt: self.timeNs)
             } catch {
                 self.loadError = "Undo failed: \(error)"
