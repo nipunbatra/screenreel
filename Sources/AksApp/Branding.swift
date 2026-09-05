@@ -18,4 +18,21 @@ enum Branding {
     }()
 
     static let tagline = "The recording studio that never loses a take"
+
+    // MARK: Distribution
+
+    /// GitHub repository that hosts releases. The update check queries its
+    /// "latest release" endpoint and the license/update dialogs link to it.
+    static let repositorySlug = "nipunbatra/screenreel"
+
+    static var repositoryURL: URL { URL(string: "https://github.com/\(repositorySlug)")! }
+    static var releasesURL: URL { URL(string: "https://github.com/\(repositorySlug)/releases/latest")! }
+    static var latestReleaseAPIURL: URL {
+        URL(string: "https://api.github.com/repos/\(repositorySlug)/releases/latest")!
+    }
+
+    /// Where "Buy a License…" sends people. `nil` (the default) hides every
+    /// purchase button in the app — pricing and the storefront are not
+    /// decided yet. Set this to the checkout page when they are.
+    static let purchaseURL: URL? = nil
 }

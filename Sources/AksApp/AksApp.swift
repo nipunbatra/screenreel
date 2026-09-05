@@ -18,6 +18,7 @@ struct AksApplication: App {
         // regular, activatable app with a Dock icon and key windows.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()
+        UpdateChecker.shared.scheduleAutomaticCheck()  // at most once per 24 h; see UpdateCheck.swift
         if let debugPath = ProcessInfo.processInfo.environment["AKS_DEBUG_WINDOWS_FILE"] {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 let windows = NSApplication.shared.windows.map {
@@ -59,6 +60,9 @@ struct AksApplication: App {
                     model.openProjectPanel()
                 }
                 .keyboardShortcut("o")
+            }
+            CommandGroup(after: .appInfo) {
+                DistributionCommands()  // Enter License…, Check for Updates…
             }
         }
 

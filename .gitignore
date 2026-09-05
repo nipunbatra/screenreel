@@ -24,3 +24,5 @@ xcuserdata/
 # Build artifacts
 dist/
 .build-codex/
+dist-test/
+dist-agent/

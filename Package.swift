@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "CaptureCore", targets: ["CaptureCore"]),
         .library(name: "EventCapture", targets: ["EventCapture"]),
         .library(name: "Diagnostics", targets: ["Diagnostics"]),
+        .library(name: "Licensing", targets: ["Licensing"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
@@ -26,7 +27,7 @@ let package = Package(
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
                 "PreviewEngine", "ExportEngine", "MotionEngine", "TimelineCore",
-                "RenderGraph", "Captions",
+                "RenderGraph", "Captions", "Licensing",
             ]
         ),
         .executableTarget(
@@ -37,6 +38,10 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
+
+        // MARK: Distribution (offline license keys, update-check policy)
+        // Foundation + CryptoKit only; no other package dependencies.
+        .target(name: "Licensing"),
 
         // MARK: Interfaces/stubs (implemented in later milestones)
         .target(name: "TimelineCore", dependencies: ["ProjectModel"]),
@@ -78,6 +83,7 @@ let package = Package(
             dependencies: ["RenderGraph", "MotionEngine", "TimelineCore"]
         ),
         .testTarget(name: "EventCaptureTests", dependencies: ["EventCapture"]),
+        .testTarget(name: "LicensingTests", dependencies: ["Licensing"]),
         .testTarget(
             name: "IntegrationTests",
             dependencies: [
