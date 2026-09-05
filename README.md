@@ -50,6 +50,30 @@ Cloud sharing, team workspaces, AI chapters, stock media, Windows support, and a
 
 All code in this repository is original and MIT-licensed. Contributions must not copy code or assets from other screen-recording products, whatever their license.
 
+## Privacy
+
+Screenreel needs no account and sends no telemetry. Recordings, transcripts,
+captions, and exports are produced and stay on your Mac. License keys are
+verified offline with a public key embedded in the app.
+
+The app makes exactly **one** kind of network request: the update check. It
+is a single GET to `https://api.github.com/repos/nipunbatra/screenreel/releases/latest`
+that runs when you choose *Check for Updates…* and, if *Check for Updates
+Automatically* is on (the default), at most once every 24 hours. It carries
+no identifiers beyond a `User-Agent` of `Screenreel/<version>`; GitHub sees
+your IP address as with any web request. Turn it off in the app menu (stored
+as `updates.automatic` in the app's preferences). Nothing else in the app or
+the `aks` CLI opens a connection.
+
+## Download and distribution
+
+Signed, notarized builds are published on
+[GitHub Releases](https://github.com/nipunbatra/screenreel/releases/latest);
+the version of record is the `VERSION` file. Building, signing, notarizing,
+releasing, and issuing license keys are described in
+[`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md). Licenses gate nothing today —
+the mechanism exists ahead of any pricing decision.
+
 ## Start here
 
 The first implementation milestone is not the editor. It is a segmented, crash-recoverable recorder plus a validator. Follow [`CLAUDE.md`](CLAUDE.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
@@ -63,8 +87,8 @@ first editor/export slice on top of it works end to end. See
 **The app** (recorder + editor):
 
 ```bash
-Scripts/make-app.sh          # builds "dist/Screen Record.app"
-open "dist/Screen Record.app" # grant Screen Recording, Microphone, Input Monitoring
+Scripts/make-app.sh          # builds dist/Screenreel.app (version from VERSION)
+open dist/Screenreel.app     # grant Screen Recording, Microphone, Input Monitoring
 ```
 
 Record a display (the app's own windows are excluded from capture), then edit:
