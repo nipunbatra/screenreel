@@ -132,7 +132,7 @@ final class CLISurfaceTests: XCTestCase {
 
         let expected: Set<String> = [
             "record", "export", "validate", "recover", "extract", "inspect",
-            "selftest", "env", "diagnose", "captions",
+            "selftest", "env", "diagnose", "captions", "perf",
         ]
         XCTAssertEqual(
             Set(subcommands), expected,
