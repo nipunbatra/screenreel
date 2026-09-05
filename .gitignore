@@ -9,6 +9,7 @@ xcuserdata/
 
 # Generated media and recoverable application projects do not belong in Git.
 *.screenreel/
+*.aks/
 *.screenreel-export/
 *.mp4
 *.mov
@@ -17,9 +18,12 @@ xcuserdata/
 *.caf
 *.log
 
-# Checked-in schema fixtures are exempt from the media/project ignores above.
+# Checked-in schema fixtures are exempt from the media/project ignores above
+# (both the current and the legacy package extension).
 !Tests/ProjectModelTests/Fixtures/**/*.screenreel/
 !Tests/ProjectModelTests/Fixtures/**/*.screenreel/**
+!Tests/ProjectModelTests/Fixtures/**/*.aks/
+!Tests/ProjectModelTests/Fixtures/**/*.aks/**
 
 # Build artifacts
 dist/

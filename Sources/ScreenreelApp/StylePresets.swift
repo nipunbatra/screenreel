@@ -19,7 +19,21 @@ final class StylePresetStore {
             .appendingPathComponent("style-presets.json")
     }
 
+    /// Where builds named "Aks" kept the presets; copied over once.
+    private static var legacyFileURL: URL {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Aks", isDirectory: true)
+            .appendingPathComponent("style-presets.json")
+    }
+
     init() {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: Self.fileURL.path), fm.fileExists(atPath: Self.legacyFileURL.path) {
+            try? fm.createDirectory(
+                at: Self.fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? fm.copyItem(at: Self.legacyFileURL, to: Self.fileURL)
+        }
         library = StylePresetLibrary.load(from: Self.fileURL)
     }
 

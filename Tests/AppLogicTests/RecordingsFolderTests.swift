@@ -62,4 +62,31 @@ final class RecordingsFolderTests: XCTestCase {
         if case .failed = result.migration {} else { XCTFail("expected .failed, got \(result.migration)") }
         XCTAssertEqual(result.url, legacy)
     }
+
+    func testAFolderThatIsNotOursIsLeftAlone() throws {
+        _ = try make("Aks", files: ["holiday.mov", "notes.txt"])
+        let result = RecordingsFolder.resolveDefault(in: movies)
+        XCTAssertEqual(result.migration, .keptBoth)
+        XCTAssertEqual(result.url.lastPathComponent, "Screenreel")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: movies.appendingPathComponent("Aks/holiday.mov").path))
+    }
+
+    func testALiveSessionInTheLegacyFolderBlocksTheMove() throws {
+        let legacy = try make("Aks")
+        let package = legacy.appendingPathComponent("Recording live.aks", isDirectory: true)
+        try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+        try Data("lock".utf8).write(to: package.appendingPathComponent("session.lock"))
+        XCTAssertFalse(RecordingsFolder.isMigratable(legacy))
+        XCTAssertEqual(RecordingsFolder.resolveDefault(in: movies).migration, .keptBoth)
+        XCTAssertNotNil(RecordingsFolder.legacyFolder(in: movies))
+    }
+
+    func testDotfilesDoNotBlockMigration() throws {
+        _ = try make("Aks", files: [".DS_Store"])
+        let package = movies.appendingPathComponent("Aks/Recording x.aks", isDirectory: true)
+        try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+        XCTAssertTrue(RecordingsFolder.isMigratable(movies.appendingPathComponent("Aks")))
+        XCTAssertEqual(RecordingsFolder.resolveDefault(in: movies).migration, .moved)
+        XCTAssertNil(RecordingsFolder.legacyFolder(in: movies))
+    }
 }

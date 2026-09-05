@@ -1,4 +1,5 @@
 import AppKit
+import AppSupport
 import SwiftUI
 
 @main
@@ -18,6 +19,9 @@ struct ScreenreelApplication: App {
         // -ApplePersistenceIgnoreState YES; the app has one fixed-layout
         // window, so losing frame restoration costs nothing.
         UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
+        // First launch under the new bundle id: carry the license key,
+        // hotkeys, preferences and update-check state over from in.aks.app.
+        DefaultsMigration.migrateIfNeeded()
         // Running as a bare SwiftPM executable (swift run ScreenreelApp): become a
         // regular, activatable app with a Dock icon and key windows.
         NSApplication.shared.setActivationPolicy(.regular)

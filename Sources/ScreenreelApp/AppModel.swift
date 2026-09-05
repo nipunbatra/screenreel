@@ -171,6 +171,9 @@ final class AppModel {
         }
         refreshRecents()
         startActivationRefresh()
+        if case .failed(let reason) = Self.recordingsFolderResolution.migration {
+            statusMessage = "Could not rename ~/Movies/Aks to ~/Movies/Screenreel (\(reason)); recordings stay in the old folder."
+        }
         // This init runs while SwiftUI is still constructing the App value —
         // before NSApplication (and its window-server connection) exists.
         // A status item or a Carbon event target created here asserts
@@ -202,12 +205,15 @@ final class AppModel {
 
     // MARK: - Environment
 
+    static let moviesDirectory = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+
     /// ~/Movies/Screenreel, after the one-time rename of ~/Movies/Aks
     /// (RecordingsFolder in AppSupport, tested against temp directories).
-    static var defaultRecordingsDirectory: URL {
-        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
-        return RecordingsFolder.resolveDefault(in: movies).url
-    }
+    /// Resolved exactly once per process: this is read on every SwiftUI
+    /// render of the disk line and Settings, and a failed rename must not
+    /// be retried on each of them.
+    static let recordingsFolderResolution = RecordingsFolder.resolveDefault(in: moviesDirectory)
+    static var defaultRecordingsDirectory: URL { recordingsFolderResolution.url }
 
     /// The folder new recordings land in: the user's choice from Settings
     /// while it exists, else ~/Movies/Screenreel (created on demand).
@@ -848,10 +854,20 @@ final class AppModel {
         let directory = recordingsDirectory
         Task {
             // Enumeration + manifest reads are file IO: off the main actor.
+            // The old folder, when it survived next to the new one (a user
+            // ran an old build once), is listed too so no take disappears.
+            var directories = [directory]
+            if let legacy = RecordingsFolder.legacyFolder(in: Self.moviesDirectory),
+                legacy.standardizedFileURL != directory.standardizedFileURL
+            {
+                directories.append(legacy)
+            }
             let cards = await Task.detached(priority: .userInitiated) {
-                let entries = (try? FileManager.default.contentsOfDirectory(
-                    at: directory,
-                    includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+                let entries = directories.flatMap { dir in
+                    (try? FileManager.default.contentsOfDirectory(
+                        at: dir,
+                        includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+                }
                 return entries
                     .filter { ProjectSchema.isPackageExtension($0.pathExtension) }
                     .compactMap { url -> ProjectCard? in

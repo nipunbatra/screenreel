@@ -310,6 +310,11 @@ public actor CaptureSession {
                 trackID: nil, startNs: pauseStartNs ?? now, endNs: now, reason: "pause"))
         await videoWriter?.markDiscontinuity()
         await cameraWriter?.markDiscontinuity()
+        // The activity stamps froze during the pause; restart the quiet /
+        // silence clocks from now, or a ≥10 s pause on a static screen
+        // reports "video quiet" on the first heartbeat after resuming.
+        live.lastVideoActivityNs.store(now, ordering: .relaxed)
+        live.lastMicActivityNs.store(now, ordering: .relaxed)
         paused = false
     }
 
