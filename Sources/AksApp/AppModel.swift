@@ -103,6 +103,7 @@ final class AppModel {
 
     var recentProjects: [URL] = []
     var autopilotStarted = false
+    var uxSelfTestStarted = false
     var needsRelaunch = false
     var screenPermission: ScreenPermissionState = .denied
 
@@ -145,13 +146,33 @@ final class AppModel {
         refreshDisplays()
         refreshRecents()
         startActivationRefresh()
-        if !isHarnessRun {
-            menuBar.bind(model: self)
-            HotkeyCenter.shared.setHandler { [weak self] action in
-                self?.handleHotkey(action)
+        // This init runs while SwiftUI is still constructing the App value —
+        // before NSApplication (and its window-server connection) exists.
+        // A status item or a Carbon event target created here asserts
+        // inside CoreGraphics; install both once the app has launched.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didFinishLaunchingNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.installMenuBarAndHotkeys()
             }
-            HotkeyCenter.shared.apply(preferences)
         }
+    }
+
+    @ObservationIgnored private var menuBarAndHotkeysInstalled = false
+
+    /// Status item + global hotkeys. Idempotent; called from the
+    /// did-finish-launching notification and, as a fallback, from the
+    /// main window's onAppear. Harness runs get neither.
+    func installMenuBarAndHotkeys() {
+        guard !isHarnessRun, !menuBarAndHotkeysInstalled else { return }
+        menuBarAndHotkeysInstalled = true
+        menuBar.bind(model: self)
+        HotkeyCenter.shared.setHandler { [weak self] action in
+            self?.handleHotkey(action)
+        }
+        HotkeyCenter.shared.apply(preferences)
     }
 
     // MARK: - Environment
@@ -308,6 +329,10 @@ final class AppModel {
         areaPicker.present(intent: thenRecord ? .record : .useSelection, initial: initial) {
             [weak self] selection in
             guard let self else { return }
+            if !self.isHarnessRun {
+                HotkeyCenter.shared.intercept(.escape, nil)
+                HotkeyCenter.shared.intercept(.returnKey, nil)
+            }
             guard let selection else {
                 if !thenRecord { self.showMainWindow() }
                 return
@@ -317,6 +342,15 @@ final class AppModel {
                 self.startCountdown()
             } else {
                 self.showMainWindow()
+            }
+        }
+        // The overlay covers every display, so capturing Esc/Return
+        // system-wide while it is up takes nothing from anyone; it makes
+        // both keys work even when the panels were refused key status.
+        if areaPicker.isPresenting, !isHarnessRun {
+            HotkeyCenter.shared.intercept(.escape) { [weak self] in self?.areaPicker.cancel() }
+            HotkeyCenter.shared.intercept(.returnKey) { [weak self] in
+                self?.areaPicker.commitCurrentSelection()
             }
         }
     }
@@ -894,6 +928,11 @@ final class AppModel {
             remaining: seconds, onDisplayID: selectedDisplayID,
             onStartNow: { [weak self] in self?.skipCountdown() },
             onCancel: { [weak self] in self?.cancelCountdown() })
+        // Esc must cancel even when another app is frontmost and the panel
+        // was refused key status; released on every exit path below.
+        if !isHarnessRun {
+            HotkeyCenter.shared.intercept(.escape) { [weak self] in self?.cancelCountdown() }
+        }
         countdownTask = Task {
             for remaining in stride(from: seconds, through: 1, by: -1) {
                 if Task.isCancelled { return }
@@ -910,7 +949,7 @@ final class AppModel {
     func skipCountdown() {
         guard case .countdown = mode else { return }
         countdownTask?.cancel()
-        countdownPanel.hide()
+        dismissCountdownPanel()
         Task { await self.beginRecording() }
     }
 
@@ -918,8 +957,15 @@ final class AppModel {
     func cancelCountdown() {
         guard case .countdown = mode else { return }
         countdownTask?.cancel()
-        countdownPanel.hide()
+        dismissCountdownPanel()
         mode = .start
+    }
+
+    private func dismissCountdownPanel() {
+        countdownPanel.hide()
+        if !isHarnessRun {
+            HotkeyCenter.shared.intercept(.escape, nil)
+        }
     }
 
     private func beginRecording() async {
@@ -927,7 +973,7 @@ final class AppModel {
         // change during the countdown cancels the recording intent.
         guard case .countdown = mode else { return }
         // The countdown must be gone before the first frame is captured.
-        countdownPanel.hide()
+        dismissCountdownPanel()
         // The start-screen camera preview must release the device before
         // the recording session opens it.
         stopSourcePreviews()

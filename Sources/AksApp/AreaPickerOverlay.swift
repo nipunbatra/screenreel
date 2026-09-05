@@ -84,6 +84,15 @@ final class AreaPickerController {
         finishAll(with: nil)
     }
 
+    /// Return pressed anywhere (global interception): confirm whichever
+    /// display holds the selection, if any.
+    func commitCurrentSelection() {
+        for panel in panels where panel.pickerView.selection != nil {
+            panel.pickerView.commit()
+            return
+        }
+    }
+
     private func finish(displayID: UInt32, screenLocal rect: CGRect, screenHeight: CGFloat) {
         let topLeft = AreaGeometry.displayLocalTopLeft(rect, screenHeight: screenHeight)
         finishAll(with: AreaSelection(displayID: displayID, rect: topLeft))
@@ -120,7 +129,6 @@ final class AreaPickerPanel: NSPanel {
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false)
         contentView = pickerView
-        level = .screenSaver
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
@@ -129,6 +137,9 @@ final class AreaPickerPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         isFloatingPanel = true
+        // After isFloatingPanel: that setter rewrites the level to
+        // .floating, which would leave the overlay under other panels.
+        level = .screenSaver
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         // The picker chrome must never land in a recording.
         sharingType = .none
@@ -148,16 +159,9 @@ final class AreaPickerView: NSView {
         case move(origin: CGRect, start: CGPoint)
     }
 
-    @Observable
-    final class StripState {
-        var sizeText = ""
-        @ObservationIgnored var onPrimary: (@MainActor () -> Void)?
-        @ObservationIgnored var onCancel: (@MainActor () -> Void)?
-    }
-
     private(set) var selection: CGRect?
     private var drag: Drag?
-    private let stripState = StripState()
+    private let intent: AreaPickerController.Intent
     private let strip: NSHostingView<AreaPickerStrip>
 
     var onSelectionBegan: (@MainActor () -> Void)?
@@ -165,14 +169,13 @@ final class AreaPickerView: NSView {
     var onCancel: (@MainActor () -> Void)?
 
     init(frame: NSRect, intent: AreaPickerController.Intent) {
-        strip = NSHostingView(
-            rootView: AreaPickerStrip(state: stripState, primaryTitle: intent.primaryTitle))
+        self.intent = intent
+        strip = NSHostingView(rootView: AreaPickerStrip(
+            sizeText: "", primaryTitle: intent.primaryTitle, onPrimary: {}, onCancel: {}))
         super.init(frame: frame)
         wantsLayer = true
         strip.isHidden = true
         addSubview(strip)
-        stripState.onPrimary = { [weak self] in self?.commit() }
-        stripState.onCancel = { [weak self] in self?.onCancel?() }
         addTrackingArea(NSTrackingArea(
             rect: .zero,
             options: [.activeAlways, .inVisibleRect, .mouseMoved, .cursorUpdate, .mouseEnteredAndExited],
@@ -210,7 +213,15 @@ final class AreaPickerView: NSView {
 
     private func showStrip() {
         guard let selection else { return }
-        stripState.sizeText = AreaGeometry.sizeLabel(for: selection)
+        // A fresh root view with the final text, so the size measured
+        // below is the size of what will be drawn (an observable text
+        // change re-renders a turn later and measured the old content).
+        strip.rootView = AreaPickerStrip(
+            sizeText: AreaGeometry.sizeLabel(for: selection),
+            primaryTitle: intent.primaryTitle,
+            onPrimary: { [weak self] in self?.commit() },
+            onCancel: { [weak self] in self?.onCancel?() })
+        strip.layoutSubtreeIfNeeded()
         let size = strip.fittingSize
         strip.frame = NSRect(
             origin: AreaGeometry.stripOrigin(for: selection, stripSize: size, within: bounds),
@@ -372,23 +383,25 @@ final class AreaPickerView: NSView {
 
 /// The Record/Cancel strip under a finished selection.
 struct AreaPickerStrip: View {
-    let state: AreaPickerView.StripState
+    let sizeText: String
     let primaryTitle: String
+    let onPrimary: @MainActor () -> Void
+    let onCancel: @MainActor () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(state.sizeText)
+            Text(sizeText)
                 .font(.callout.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.white)
             Divider()
                 .frame(height: 16)
                 .overlay(.white.opacity(0.2))
             Button("Cancel") {
-                state.onCancel?()
+                onCancel()
             }
             .buttonStyle(.bordered)
             Button {
-                state.onPrimary?()
+                onPrimary()
             } label: {
                 Label(primaryTitle, systemImage: "record.circle.fill")
                     .fontWeight(.semibold)
@@ -399,6 +412,7 @@ struct AreaPickerStrip: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.5))
         }
+        .fixedSize()
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 12))

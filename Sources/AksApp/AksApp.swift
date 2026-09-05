@@ -6,6 +6,16 @@ struct AksApplication: App {
     @State private var model = AppModel()
 
     init() {
+        // Never restore windows from AppKit saved state. The state file is
+        // per bundle id and shared by every build of this app; a record
+        // written by a build whose main scene had a different identity
+        // makes AppKit "restore" a window that no longer exists, after
+        // which SwiftUI presents nothing at all — not even with
+        // defaultLaunchBehavior(.presented) / restorationBehavior(.disabled).
+        // Verified: launching with -ApplePersistenceIgnoreState YES brings
+        // the window back. The app has one fixed-layout window, so losing
+        // frame restoration costs nothing.
+        UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
         // Running as a bare SwiftPM executable (swift run AksApp): become a
         // regular, activatable app with a Dock icon and key windows.
         NSApplication.shared.setActivationPolicy(.regular)
@@ -34,6 +44,9 @@ struct AksApplication: App {
                 .textSelection(.enabled)
                 .frame(minWidth: 960, minHeight: 600)
         }
+        // Present at launch, centered (saved state is ignored — see init).
+        .defaultLaunchBehavior(.presented)
+        .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open Project…") {
@@ -89,7 +102,9 @@ struct ContentView: View {
             // the menu bar / hotkeys (SwiftUI only exposes these to views).
             model.openMainWindowAction = { openWindow(id: "main") }
             model.openSettingsAction = { openSettings() }
+            model.installMenuBarAndHotkeys()
             model.startAutopilotIfRequested()
+            model.startUXSelfTestIfRequested()
         }
     }
 }

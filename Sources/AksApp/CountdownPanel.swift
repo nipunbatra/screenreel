@@ -27,7 +27,7 @@ final class CountdownPanelController {
         init(remaining: Int) { self.remaining = remaining }
     }
 
-    private var panel: CountdownPanel?
+    private(set) var panel: CountdownPanel?
     private var state: State?
 
     var isVisible: Bool { panel?.isVisible ?? false }

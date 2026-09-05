@@ -55,6 +55,55 @@ final class HotkeyCenter {
         registrations = [:]
     }
 
+    // MARK: Transient keys
+
+    /// Plain keys captured system-wide only while one of our overlays is
+    /// up. A non-activating panel is not guaranteed key status while
+    /// another app is active (a hotkey start from Safari, say), so Esc for
+    /// the countdown — and Esc/Return for the full-screen area picker,
+    /// which covers every display anyway — go through Carbon like the
+    /// chords do. Unregistered the moment the overlay goes away.
+    enum TransientKey: UInt32, CaseIterable {
+        case escape = 100
+        case returnKey = 101
+
+        var keyCode: UInt32 {
+            switch self {
+            case .escape: return 0x35  // kVK_Escape
+            case .returnKey: return 0x24  // kVK_Return
+            }
+        }
+    }
+
+    private var transientRefs: [TransientKey: EventHotKeyRef] = [:]
+    private var transientHandlers: [TransientKey: @MainActor () -> Void] = [:]
+
+    var interceptedTransientKeys: Set<TransientKey> { Set(transientRefs.keys) }
+
+    /// Capture `key` system-wide and run `handler` when it is pressed;
+    /// nil releases it.
+    func intercept(_ key: TransientKey, _ handler: (@MainActor () -> Void)?) {
+        if let ref = transientRefs.removeValue(forKey: key) {
+            UnregisterEventHotKey(ref)
+        }
+        transientHandlers[key] = nil
+        guard let handler else { return }
+        installHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(signature: hotkeySignature, id: key.rawValue)
+        let status = RegisterEventHotKey(
+            key.keyCode, 0, hotKeyID, GetApplicationEventTarget(), 0, &ref)
+        guard status == noErr, let ref else { return }
+        transientRefs[key] = ref
+        transientHandlers[key] = handler
+    }
+
+    func releaseTransientKeys() {
+        for key in TransientKey.allCases {
+            intercept(key, nil)
+        }
+    }
+
     private func installHandlerIfNeeded() {
         guard handlerRef == nil else { return }
         var spec = EventTypeSpec(
@@ -64,9 +113,14 @@ final class HotkeyCenter {
             GetApplicationEventTarget(), hotkeyEventHandler, 1, &spec, nil, &handlerRef)
     }
 
-    fileprivate func dispatch(id: UInt32) {
-        guard let action = HotkeyAction(rawValue: id) else { return }
-        onAction?(action)
+    /// Route a pressed hot-key ID. Internal (not fileprivate) so the UX
+    /// self-test can exercise the same path the Carbon callback takes.
+    func dispatch(id: UInt32) {
+        if let action = HotkeyAction(rawValue: id) {
+            onAction?(action)
+        } else if let key = TransientKey(rawValue: id) {
+            transientHandlers[key]?()
+        }
     }
 }
 
