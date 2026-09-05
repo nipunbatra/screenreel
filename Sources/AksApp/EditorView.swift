@@ -1,5 +1,6 @@
 import AppKit
 import Captions
+import PreviewEngine
 import SwiftUI
 import TimelineCore
 
@@ -10,8 +11,8 @@ struct EditorView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                previewCanvas
-                transportBar
+                PreviewCanvasView(player: player)
+                TransportBar(player: player)
                 TimeRuler(durationNs: player.durationNs)
                     .frame(height: 16)
                     .padding(.horizontal, 16)
@@ -86,7 +87,6 @@ struct EditorView: View {
     /// Toolbar Export routes into the inspector's export flow.
     @State private var exportRequested = false
     @State private var showPalette = false
-    @FocusState private var previewFocused: Bool
 
     private var paletteCommands: [PaletteCommand] {
         [
@@ -150,81 +150,44 @@ struct EditorView: View {
         ]
     }
 
-    @Environment(\.displayScale) private var displayScale
-
-    private var previewCanvas: some View {
-        GeometryReader { proxy in
-            previewContent
-                .onAppear {
-                    player.setPreviewSurface(
-                        pointSize: proxy.size, displayScale: displayScale)
-                }
-                .onChange(of: proxy.size) { _, size in
-                    player.setPreviewSurface(
-                        pointSize: size, displayScale: displayScale)
-                }
-        }
+    static func timeText(_ ns: Int64) -> String {
+        let totalSeconds = Double(ns) / 1e9
+        let minutes = Int(totalSeconds) / 60
+        let seconds = totalSeconds - Double(minutes * 60)
+        return String(format: "%d:%05.2f", minutes, seconds)
     }
+}
 
-    private var previewContent: some View {
+// MARK: - Preview canvas
+
+/// The preview surface is a Metal layer that SwiftUI lays out to the
+/// aspect-fitted canvas rect. Per-frame pixels never pass through SwiftUI:
+/// the shadow and border are static shapes around the surface (rasterized
+/// once, not re-blurred per frame), and the placeholder thumbnail sits on
+/// top only until the first real frame is presented.
+///
+/// Its own View so the 30 Hz playhead updates (read by the transport bar
+/// and timeline) never re-evaluate this body: with a platform view in the
+/// tree, every re-evaluation of the enclosing body also re-pushed the
+/// window toolbar preference and re-solved the toolbar's AppKit
+/// constraints — a fifth of the main thread during playback.
+struct PreviewCanvasView: View {
+    let player: PreviewPlayer
+    @FocusState private var previewFocused: Bool
+
+    var body: some View {
         ZStack {
             Color.canvasBackdrop
-            if let frame = player.currentFrame ?? player.placeholder {
-                GeometryReader { imageProxy in
-                    Image(decorative: frame, scale: 1)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(.white.opacity(0.08)))
-                        .shadow(color: .black.opacity(0.55), radius: 24, y: 10)
-                        // Direct manipulation on the frame itself:
-                        // click aims the SELECTED zoom's focal point;
-                        // drag-release drops the camera PiP into that
-                        // quadrant.
-                        .gesture(
-                            SpatialTapGesture()
-                                .onEnded { value in
-                                    previewFocused = true
-                                    // The placeholder thumbnail's aspect can
-                                    // predate the current canvas reframe;
-                                    // aiming through it would mis-map.
-                                    guard player.currentFrame != nil,
-                                        let fraction = Self.imageFraction(
-                                            point: value.location,
-                                            container: imageProxy.size,
-                                            image: CGSize(
-                                                width: CGFloat(frame.width),
-                                                height: CGFloat(frame.height)))
-                                    else { return }
-                                    player.aimSelectedZoom(atViewFraction: fraction)
-                                })
-                        .gesture(
-                            DragGesture(minimumDistance: 24)
-                                .onEnded { value in
-                                    guard player.selectedZoomID == nil,
-                                        let fraction = Self.imageFraction(
-                                            point: value.location,
-                                            container: imageProxy.size,
-                                            image: CGSize(
-                                                width: CGFloat(frame.width),
-                                                height: CGFloat(frame.height)))
-                                    else { return }
-                                    player.placeCameraPiP(atViewFraction: fraction)
-                                })
-                }
+            previewSurface
+                .aspectRatio(player.canvasAspect, contentMode: .fit)
                 .padding(24)
-                    .overlay(alignment: .bottomTrailing) {
-                        if player.currentFrame == nil {
-                            ProgressView()
-                                .controlSize(.small)
-                                .padding(36)
-                        }
+                .overlay(alignment: .bottomTrailing) {
+                    if !player.hasRenderedFrame {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(36)
                     }
-            } else {
-                ProgressView()
-            }
+                }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .focusable()
@@ -247,7 +210,72 @@ struct EditorView: View {
         }
     }
 
-    private var transportBar: some View {
+    /// The fitted surface with its static chrome. Direct manipulation on
+    /// the frame itself is recognized by the surface (AppKit) and lands
+    /// here: click aims the SELECTED zoom's focal point; drag-release
+    /// drops the camera PiP into that quadrant. The surface's size IS the
+    /// fitted canvas rect, so the pointer→canvas fraction comes from
+    /// `PreviewFit` with the rendered canvas size (there is no CGImage to
+    /// measure any more).
+    private var previewSurface: some View {
+        ZStack {
+            // Static underlay: the drop shadow is rendered once for this
+            // shape and cached by the compositor; the Metal layer above
+            // never re-blurs anything.
+            RoundedRectangle(cornerRadius: MetalPreviewNSView.cornerRadius)
+                .fill(Color.canvasBackdrop)
+                .shadow(color: .black.opacity(0.55), radius: 24, y: 10)
+            MetalPreviewSurface(
+                player: player,
+                onTap: { point, size in
+                    previewFocused = true
+                    // The placeholder thumbnail's aspect can predate the
+                    // current canvas reframe; aiming through it would
+                    // mis-map.
+                    guard player.hasRenderedFrame,
+                        let fraction = Self.surfaceFraction(
+                            point: point, container: size, player: player)
+                    else { return }
+                    player.aimSelectedZoom(atViewFraction: fraction)
+                },
+                onDragEnd: { point, size in
+                    guard player.selectedZoomID == nil,
+                        let fraction = Self.surfaceFraction(
+                            point: point, container: size, player: player)
+                    else { return }
+                    player.placeCameraPiP(atViewFraction: fraction)
+                })
+            if !player.hasRenderedFrame, let placeholder = player.placeholder {
+                Image(decorative: placeholder, scale: 1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: MetalPreviewNSView.cornerRadius))
+                    .allowsHitTesting(false)
+            }
+            RoundedRectangle(cornerRadius: MetalPreviewNSView.cornerRadius)
+                .strokeBorder(.white.opacity(0.08))
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Fraction of the rendered canvas under a pointer position in the
+    /// surface's coordinate space; nil in any letterbox sliver or before a
+    /// frame exists.
+    private static func surfaceFraction(
+        point: CGPoint, container: CGSize, player: PreviewPlayer
+    ) -> CGPoint? {
+        guard let frame = player.latestFrame else { return nil }
+        return PreviewFit.fraction(
+            of: point, canvasSize: frame.canvasSize, container: container)
+    }
+}
+
+/// Transport controls, playhead time and scrubber. Its own View so the
+/// per-tick `timeNs` reads stay out of `EditorView.body`.
+struct TransportBar: View {
+    let player: PreviewPlayer
+
+    var body: some View {
         HStack(spacing: 14) {
             HStack(spacing: 6) {
                 Button {
@@ -326,32 +354,6 @@ struct EditorView: View {
         .padding(.vertical, 10)
     }
 
-    /// Point in the container → fraction within the aspect-fitted image
-    /// rect; nil when the point falls in the letterbox area.
-    static func imageFraction(
-        point: CGPoint, container: CGSize, image: CGSize
-    ) -> CGPoint? {
-        guard image.width > 0, image.height > 0,
-            container.width > 0, container.height > 0
-        else { return nil }
-        let scale = min(container.width / image.width, container.height / image.height)
-        let shown = CGSize(width: image.width * scale, height: image.height * scale)
-        let origin = CGPoint(
-            x: (container.width - shown.width) / 2,
-            y: (container.height - shown.height) / 2)
-        let local = CGPoint(x: point.x - origin.x, y: point.y - origin.y)
-        guard local.x >= 0, local.y >= 0,
-            local.x <= shown.width, local.y <= shown.height
-        else { return nil }
-        return CGPoint(x: local.x / shown.width, y: local.y / shown.height)
-    }
-
-    static func timeText(_ ns: Int64) -> String {
-        let totalSeconds = Double(ns) / 1e9
-        let minutes = Int(totalSeconds) / 60
-        let seconds = totalSeconds - Double(minutes * 60)
-        return String(format: "%d:%05.2f", minutes, seconds)
-    }
 }
 
 // MARK: - Timeline
