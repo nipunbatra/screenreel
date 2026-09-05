@@ -5,12 +5,13 @@ import Foundation
 struct Screenreel: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "screenreel",
-        abstract: "Screenreel — recovery-first macOS screen recorder (Milestone 0 tools).",
+        abstract: "Screen Reel — record, edit, export, and recover on your Mac.",
         discussion: """
             A .screenreel project is an open package: raw media under raw/, input events
             under events/, a hash-chained journal, and an atomically-replaced
-            manifest. These commands validate, recover, extract, inspect, and
-            record such packages. See docs/PROJECT_FORMAT.md.
+            manifest. Record, export styled or original video, generate captions,
+            inspect performance, validate, recover, and extract standard media.
+            No account required. See docs/PROJECT_FORMAT.md.
             """,
         version: "0.2.0",
         subcommands: [

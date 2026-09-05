@@ -14,10 +14,10 @@ enum Branding {
         {
             return name
         }
-        return "Screenreel"
+        return "Screen Reel"
     }()
 
-    static let tagline = "The recording studio that never loses a take"
+    static let tagline = "Record clearly. Make it yours."
 
     // MARK: Distribution
 

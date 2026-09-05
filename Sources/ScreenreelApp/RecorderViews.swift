@@ -256,7 +256,7 @@ struct StartView: View {
                                 model.requestInputMonitoring()
                             }
                             .font(.caption)
-                            .help("Registers Screenreel with macOS and shows the system prompt (or opens System Settings with the app already in the list).")
+                            .help("Registers Screen Reel with macOS and shows the system prompt (or opens System Settings with the app already in the list).")
                         }
                     }
                 }

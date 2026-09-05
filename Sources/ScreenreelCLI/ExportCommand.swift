@@ -11,8 +11,9 @@ struct Export: AsyncParsableCommand {
             no quality loss); microphone and system audio are mixed and
             AAC-encoded; recording gaps become explicit silence. Raw media is
             never modified, and the output appears only after it validates.
-            This is the raw-assembly exporter (ADR 0005): cursor, zooms, and
-            effects arrive with the editor milestones. A .gif output path
+            Add --styled to apply saved cursor, zoom, background, camera and
+            audio-cleanup edits. Add --checkpoint for resumable rendering.
+            A .gif output path
             renders a looping animated GIF through the styled composition
             graph instead (use --height/--fps to tune size).
             """)
