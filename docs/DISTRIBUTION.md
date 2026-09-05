@@ -93,6 +93,10 @@ is a permanent "latest" link the website uses), and a SHA-256 file.
 
 `ALLOW_ADHOC=1 Scripts/make-dmg.sh` builds `dist/Screenreel-<version>-unsigned.dmg`.
 It opens on the building Mac only; `notarize.sh` and `release.sh` refuse it.
+The same switch works for the bare bundle — `ALLOW_ADHOC=1 Scripts/make-app.sh`
+skips identity lookup and signs ad-hoc, which is the way to build when a
+Developer ID identity exists but the keychain is locked (otherwise the
+default path tries it and stops at `errSecInternalComponent`).
 
 ### Architecture
 
