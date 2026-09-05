@@ -25,4 +25,5 @@ xcuserdata/
 dist/
 .build-codex/
 dist-test/
-dist-agent/
+# Agent worktree bundles (Scripts/make-app.sh dist-agent*)
+dist-agent*/

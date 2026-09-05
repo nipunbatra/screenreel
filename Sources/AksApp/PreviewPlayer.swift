@@ -7,19 +7,12 @@ import PreviewEngine
 import ProjectModel
 import TimelineCore
 
-/// Wraps a `CGImage` for transfer out of the render actor; the image is
-/// created there and never mutated afterward.
-struct RenderedFrame: @unchecked Sendable {
-    let image: CGImage
-    let timeNs: Int64
-}
-
 /// Owns the `ProjectComposition` off the main thread. All evaluation and
-/// edit mutation funnels through this actor; the UI only ever sees rendered
-/// frames and value-type edit documents.
+/// edit mutation funnels through this actor; the UI only ever sees composed
+/// frames (immutable Core Image recipes the Metal surface draws) and
+/// value-type edit documents. No pixels are ever read back to the CPU here.
 actor CompositionBox {
     private let composition: ProjectComposition
-    private let context = CIContext()
 
     init(projectURL: URL) throws {
         // Preview decodes at proxy resolution (fast 4K scrubbing); export
@@ -45,10 +38,15 @@ actor CompositionBox {
         composition.setOutputSize(size)
     }
 
-    func renderedFrame(at timeNs: Int64) async -> RenderedFrame? {
+    /// The composed frame recipe at an output time. The canvas size is taken
+    /// from the image itself: `frame(atOutput:)` suspends while decoding, and
+    /// a `setOutputSize` landing in that gap must not mislabel this frame.
+    func composedFrame(at timeNs: Int64) async -> ComposedFrame? {
         guard let ci = try? await composition.frame(atOutput: timeNs) else { return nil }
-        guard let cg = context.createCGImage(ci, from: ci.extent) else { return nil }
-        return RenderedFrame(image: cg, timeNs: timeNs)
+        return ComposedFrame(
+            image: ci,
+            canvasSize: SIMD2(ci.extent.width, ci.extent.height),
+            timeNs: timeNs)
     }
 
     func updateEdits(_ mutate: @Sendable (inout EditDocument) -> Void) throws -> EditDocument {
@@ -91,10 +89,57 @@ final class PreviewPlayer {
     private(set) var sourceDurationNs: Int64 = 0
     private(set) var sourceSize = SIMD2<Double>(1, 1)
     private(set) var edits = EditDocument()
-    private(set) var currentFrame: CGImage?
+    /// True once a composed frame has been presented on the Metal surface;
+    /// until then the UI shows the placeholder and a spinner.
+    private(set) var hasRenderedFrame = false
+    /// The most recent composed frame. Not observed: it changes ~30×/s and
+    /// only the gestures (canvas size for the fit math) and the harness
+    /// snapshot read it, never a view body.
+    @ObservationIgnored private(set) var latestFrame: ComposedFrame?
+    /// The mounted Metal surface; frames are pushed straight to it.
+    @ObservationIgnored private weak var frameSink: (any PreviewFrameSink)?
     /// Shown instantly while the first real frame decodes (cached browser
     /// thumbnail) — an empty spinner canvas reads as "broken".
     private(set) var placeholder: CGImage?
+
+    /// Canvas aspect (width ÷ height) the preview surface is laid out to —
+    /// the edit document's choice, else the source's. Before the source
+    /// size loads, the placeholder thumbnail's aspect keeps the surface
+    /// from flashing square.
+    var canvasAspect: Double {
+        if let aspect = edits.style.canvasAspect, aspect > 0 { return aspect }
+        if sourceSize.x > 1, sourceSize.y > 1 { return sourceSize.x / sourceSize.y }
+        if let placeholder, placeholder.height > 0 {
+            return Double(placeholder.width) / Double(placeholder.height)
+        }
+        return 16.0 / 9.0
+    }
+
+    func attachFrameSink(_ sink: any PreviewFrameSink) {
+        frameSink = sink
+        if let latestFrame { sink.present(latestFrame) }
+    }
+
+    func detachFrameSink(_ sink: any PreviewFrameSink) {
+        if frameSink === sink { frameSink = nil }
+    }
+
+    /// Called by the surface after each drawable is presented.
+    func notePresented(timeNs: Int64) {
+        renderedFrameCount += 1
+        if !hasRenderedFrame { hasRenderedFrame = true }
+    }
+
+    /// Harness-only: the latest frame as a CGImage (window snapshots cannot
+    /// capture the Metal layer). Nil until a surface has rendered.
+    func snapshotFrame() -> CGImage? {
+        frameSink?.snapshotImage()
+    }
+
+    /// Harness-only: whether `sink` is the surface frames are pushed to.
+    func isFrameSink(_ sink: any PreviewFrameSink) -> Bool {
+        frameSink === sink
+    }
     private(set) var isPlaying = false
     var timeNs: Int64 = 0
     var exportState: ExportState = .idle
@@ -166,7 +211,7 @@ final class PreviewPlayer {
         self.box = try CompositionBox(projectURL: projectURL)
         Task { [weak self] in
             let image = await ProjectThumbnailer.thumbnail(for: projectURL)
-            if let self, self.currentFrame == nil { self.placeholder = image }
+            if let self, !self.hasRenderedFrame { self.placeholder = image }
         }
         Task {
             self.sourceDurationNs = await box.durationNs
@@ -345,11 +390,14 @@ final class PreviewPlayer {
         }
     }
 
-    /// Frames actually rendered since open (perf harness: frames ÷ seconds
-    /// played is the effective preview frame rate).
+    /// Frames actually presented on the surface since open (perf harness:
+    /// frames ÷ seconds played is the effective preview frame rate).
     private(set) var renderedFrameCount = 0
 
-    /// Render requests coalesce: at most one in flight, latest time wins.
+    /// Render requests coalesce: at most one composition in flight, latest
+    /// time wins. The composed recipe goes straight to the Metal surface,
+    /// which draws it on its own queue — the composition actor never waits
+    /// for the GPU, and no pixels come back to the CPU.
     func requestFrame(at requestNs: Int64) {
         pendingRenderNs = requestNs
         guard !renderInFlight else { return }
@@ -357,9 +405,9 @@ final class PreviewPlayer {
         Task { [weak self] in
             while let self, let target = self.pendingRenderNs {
                 self.pendingRenderNs = nil
-                if let frame = await self.box.renderedFrame(at: target) {
-                    self.currentFrame = frame.image
-                    self.renderedFrameCount += 1
+                if let frame = await self.box.composedFrame(at: target) {
+                    self.latestFrame = frame
+                    self.frameSink?.present(frame)
                 }
             }
             self?.renderInFlight = false
