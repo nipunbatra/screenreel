@@ -67,6 +67,15 @@ Scripts/make-app.sh          # builds "dist/Screen Record.app"
 open "dist/Screen Record.app" # grant Screen Recording, Microphone, Input Monitoring
 ```
 
+Recording starts from wherever you are: the always-on menu bar item
+(Record Screen / Record Window… / Record Area… / Recent), the global
+shortcuts ⇧⌘R (start/stop), ⇧⌘P (pause/resume) and ⇧⌘A (draw an area on
+screen and record it) — they work while any app is frontmost and need no
+extra permission — or the start screen. Every start shows an on-screen
+countdown (Esc cancels, click starts now). Settings (⌘,) covers the menu
+bar item, shortcut presets, countdown length (off/3/5 s), the recordings
+folder, and whether stopping opens the editor.
+
 Record a display (the app's own windows are excluded from capture), then edit:
 background presets, padding, rounded corners, shadow, smoothed cursor with
 click squash, click-driven auto-zooms (editable per segment), trim, live
