@@ -96,9 +96,28 @@ public struct ProjectLayout: Sendable {
         return root.appendingPathComponent(relativePath)
     }
 
+    /// Package-relative path of a file inside the package, or the absolute
+    /// path when it lies outside. Compared under several normalizations:
+    /// `standardizedFileURL` rewrites `/private/tmp/…` to `/tmp/…` only once
+    /// the path EXISTS, so a root captured before the package was created
+    /// and a file URL resolved afterwards used to disagree — and the journal
+    /// then carried absolute `segmentOpened` paths that never matched their
+    /// commits (validation: `segment.openedNotCommitted` on a clean stop).
     public func relativePath(of url: URL) -> String {
-        let rootPath = root.standardizedFileURL.path + "/"
-        let path = url.standardizedFileURL.path
-        return path.hasPrefix(rootPath) ? String(path.dropFirst(rootPath.count)) : path
+        let pairs: [(URL, URL)] = [
+            (root, url),
+            (root.standardizedFileURL, url.standardizedFileURL),
+            (root.resolvingSymlinksInPath(), url.resolvingSymlinksInPath()),
+            (root.standardizedFileURL.resolvingSymlinksInPath(),
+             url.standardizedFileURL.resolvingSymlinksInPath()),
+        ]
+        for (base, target) in pairs {
+            let rootPath = base.path + "/"
+            let path = target.path
+            if path.hasPrefix(rootPath) {
+                return String(path.dropFirst(rootPath.count))
+            }
+        }
+        return url.path
     }
 }

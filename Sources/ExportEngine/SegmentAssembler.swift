@@ -79,6 +79,8 @@ public enum SegmentAssembler {
             throw AksError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
         }
 
+        let activity = SystemActivity(.export, reason: "Raw export")
+        defer { activity.end() }
         // Journal-committed descriptors are the source of truth, exactly as
         // in validation and recovery.
         let loaded = try ProjectPackage.load(at: projectURL)

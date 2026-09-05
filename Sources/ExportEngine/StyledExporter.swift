@@ -98,6 +98,8 @@ public enum StyledExporter {
             throw AksError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
         }
 
+        let activity = SystemActivity(.export, reason: "Styled export")
+        defer { activity.end() }
         let composition = try ProjectComposition(projectURL: projectURL)
         let range = options.outputRangeNs ?? composition.trimmedRange
         let rangeDurationNs = range.endNs - range.startNs

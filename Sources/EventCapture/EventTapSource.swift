@@ -32,7 +32,7 @@ public final class EventTapSource: @unchecked Sendable {
     // Cursor-shape state crosses the tap thread, the main-thread poller, and
     // descriptor-store tasks; all access goes through this lock.
     private let cursorLock = NSLock()
-    private var lastPolledImage: NSImage?
+    private var lastPolledPNG: Data?
     private var lastCursorID: String?
     private var currentCursorIDLocked = "arrow-unknown"
 
@@ -319,16 +319,18 @@ public final class EventTapSource: @unchecked Sendable {
 
     private func pollCursorShape() {
         guard let cursor = NSCursor.currentSystem else { return }
-        // Cheap identity check first: the cursor image object is stable while
-        // the shape is unchanged, so the PNG-encode/hash path runs only on
-        // actual shape changes, not 10× per second.
+        // `NSCursor.currentSystem` hands back a NEW cursor and image object
+        // on every call (measured), so object identity never short-circuits.
+        // The PNG of a cursor is ~1 KB and encodes in ~50 µs; comparing the
+        // bytes to the last poll is the cheap way to run the hash/actor path
+        // only on real shape changes, not 10× per second.
+        let snapshot = CursorDescriptorStore.snapshot(of: cursor)
         cursorLock.lock()
-        let unchanged = lastPolledImage === cursor.image
-        lastPolledImage = cursor.image
+        let unchanged = snapshot.pngData != nil && snapshot.pngData == lastPolledPNG
+        lastPolledPNG = snapshot.pngData
         cursorLock.unlock()
         if unchanged { return }
 
-        let snapshot = CursorDescriptorStore.snapshot(of: cursor)
         let family = CursorDescriptorStore.family(matching: cursor)
         let normalizer = self.normalizer
         let handler = self.handler

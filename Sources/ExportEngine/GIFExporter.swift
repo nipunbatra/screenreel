@@ -45,6 +45,9 @@ public enum GIFExporter {
             throw AksError.ioFailed(
                 operation: "gif export", path: outputURL.path, errno: EEXIST)
         }
+
+        let activity = SystemActivity(.export, reason: "GIF export")
+        defer { activity.end() }
         guard options.fps > 0, options.fps <= 50 else {
             throw AksError.invariantViolated("gif fps must be in (0, 50]")
         }

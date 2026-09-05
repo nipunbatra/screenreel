@@ -36,6 +36,9 @@ public actor RecordingCoordinator {
     private var eventContinuation: AsyncStream<EventRecord>.Continuation?
     private var eventPump: Task<Void, Never>?
     public private(set) var eventsActive = false
+    /// Keeps App Nap and idle sleep away for the whole session (the app
+    /// hides its window while recording, which makes it nap-eligible).
+    private var activity: SystemActivity?
 
     public init(
         setup: Setup,
@@ -46,6 +49,7 @@ public actor RecordingCoordinator {
     }
 
     public func start() async throws {
+        activity = SystemActivity(.recording, reason: "Screen recording in progress")
         let session = CaptureSession(
             projectURL: setup.projectURL,
             configuration: setup.configuration,
@@ -87,6 +91,8 @@ public actor RecordingCoordinator {
             // owner (purple indicator forever, files written into a
             // package the caller is about to delete).
             _ = try? await session.stop()
+            activity?.end()
+            activity = nil
             throw error
         }
 
@@ -191,6 +197,10 @@ public actor RecordingCoordinator {
         tap?.stop()
         eventContinuation?.finish()
         await eventPump?.value
+        defer {
+            activity?.end()
+            activity = nil
+        }
         let summary = try await session.stop()
         self.session = nil
         return summary

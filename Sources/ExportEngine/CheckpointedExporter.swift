@@ -92,6 +92,9 @@ public enum CheckpointedExporter {
             throw AksError.ioFailed(
                 operation: "export", path: outputURL.path, errno: EEXIST)
         }
+
+        let activity = SystemActivity(.export, reason: "Checkpointed export")
+        defer { activity.end() }
         guard options.fps > 0, options.fps.rounded() == options.fps else {
             throw AksError.invariantViolated(
                 "checkpointed export requires an integer fps (got \(options.fps))")

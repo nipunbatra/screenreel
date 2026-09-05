@@ -16,7 +16,7 @@ struct Aks: AsyncParsableCommand {
         subcommands: [
             Record.self, Export.self, Validate.self, Recover.self,
             Extract.self, Inspect.self, Env.self, Diagnose.self,
-            Selftest.self, CaptionsExport.self,
+            Selftest.self, CaptionsExport.self, Perf.self,
         ])
 }
 
