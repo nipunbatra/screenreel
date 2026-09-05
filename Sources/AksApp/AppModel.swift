@@ -134,8 +134,23 @@ final class AppModel {
         var modified: Date
         var durationNs: Int64?
         var thumbnail: CGImage?
+        /// Left behind by a recording attempt that never captured anything.
+        var isFailedStart = false
     }
     var projectCards: [ProjectCard] = []
+    /// Real recordings, in browser order.
+    var recordingCards: [ProjectCard] { projectCards.filter { !$0.isFailedStart } }
+    /// Empty packages from failed starts (permission refused before the
+    /// delete-on-failure fix); offered for cleanup instead of blank cards.
+    var failedStartCards: [ProjectCard] { projectCards.filter(\.isFailedStart) }
+
+    /// Move every failed-start package to the Trash (recoverable).
+    func trashFailedStarts() {
+        for card in failedStartCards {
+            try? FileManager.default.trashItem(at: card.url, resultingItemURL: nil)
+        }
+        refreshRecents()
+    }
 
     init() {
         preferences = preferencesStore.load()
@@ -838,22 +853,31 @@ final class AppModel {
                 return entries
                     .filter { $0.pathExtension == AksSchema.packageExtension }
                     .compactMap { url -> ProjectCard? in
+                        let screenDirectory = ProjectLayout(root: url).screenDirectory
+                        let hasScreenMedia = !((try? FileManager.default.contentsOfDirectory(
+                            atPath: screenDirectory.path)) ?? []).isEmpty
                         guard let info = ProjectQuickInfo.read(at: url) else {
+                            let modified = (try? url.resourceValues(
+                                forKeys: [.contentModificationDateKey]))?
+                                .contentModificationDate ?? .distantPast
                             return ProjectCard(
-                                url: url,
-                                modified: (try? url.resourceValues(
-                                    forKeys: [.contentModificationDateKey]))?
-                                    .contentModificationDate ?? .distantPast,
-                                durationNs: nil, thumbnail: nil)
+                                url: url, modified: modified,
+                                durationNs: nil, thumbnail: nil,
+                                isFailedStart: RecordingBrowser.isFailedStart(
+                                    state: nil, durationNs: nil,
+                                    hasScreenMedia: hasScreenMedia, modified: modified))
                         }
                         return ProjectCard(
                             url: url, modified: info.modified,
-                            durationNs: info.durationNs, thumbnail: nil)
+                            durationNs: info.durationNs, thumbnail: nil,
+                            isFailedStart: RecordingBrowser.isFailedStart(
+                                state: info.state?.rawValue, durationNs: info.durationNs,
+                                hasScreenMedia: hasScreenMedia, modified: info.modified))
                     }
                     .sorted { $0.modified > $1.modified }
             }.value
             self.projectCards = cards
-            self.recentProjects = cards.map(\.url)
+            self.recentProjects = cards.filter { !$0.isFailedStart }.map(\.url)
             self.loadThumbnails()
         }
     }
@@ -865,7 +889,7 @@ final class AppModel {
     /// single PNG read each.
     private func loadThumbnails() {
         thumbnailTask?.cancel()
-        let urls = projectCards.filter { $0.thumbnail == nil }.map(\.url)
+        let urls = projectCards.filter { $0.thumbnail == nil && !$0.isFailedStart }.map(\.url)
         thumbnailTask = Task {
             for url in urls {
                 if Task.isCancelled { return }

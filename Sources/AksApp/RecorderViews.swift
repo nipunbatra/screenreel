@@ -373,8 +373,8 @@ struct StartView: View {
             HStack(spacing: 10) {
                 Text("Recordings")
                     .font(.title2.bold())
-                if !model.projectCards.isEmpty {
-                    Text("\(model.projectCards.count)")
+                if !model.recordingCards.isEmpty {
+                    Text("\(model.recordingCards.count)")
                         .font(.caption.monospacedDigit().weight(.semibold))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
@@ -394,7 +394,22 @@ struct StartView: View {
                 }
                 .keyboardShortcut("o")
             }
-            if model.projectCards.isEmpty {
+            if !model.failedStartCards.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text("\(model.failedStartCards.count) empty package\(model.failedStartCards.count == 1 ? "" : "s") from recordings that never started")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Move to Trash") { model.trashFailedStarts() }
+                        .help("Nothing was captured in these; they go to the Trash, not deleted.")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            }
+            if model.recordingCards.isEmpty {
                 Spacer()
                 ContentUnavailableView(
                     "No recordings yet",
@@ -407,7 +422,7 @@ struct StartView: View {
                         columns: [GridItem(.adaptive(minimum: 220, maximum: 300), spacing: 14)],
                         spacing: 14
                     ) {
-                        ForEach(model.projectCards) { card in
+                        ForEach(model.recordingCards) { card in
                             ProjectCardView(card: card) {
                                 model.openProject(at: card.url)
                             }
