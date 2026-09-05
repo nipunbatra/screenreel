@@ -53,7 +53,11 @@ public actor RecordingCoordinator {
         let session = CaptureSession(
             projectURL: setup.projectURL,
             configuration: setup.configuration,
-            callbacks: .init(onWarning: onWarning))
+            callbacks: .init(
+                onWarning: onWarning,
+                onSelfStop: { [weak self] in
+                    Task { await self?.closeExternalProducers() }
+                }))
         let capture = SCKCapture(
             configuration: setup.configuration,
             clock: session.sessionClock,
@@ -190,17 +194,25 @@ public actor RecordingCoordinator {
         try await session?.resume()
     }
 
+    /// Stop the producers the session does not own: the event tap, its
+    /// pump, and the activity assertion. Idempotent; the session's disk-full
+    /// self-stop calls it before sealing the journal.
+    private func closeExternalProducers() async {
+        tap?.stop()
+        tap = nil
+        eventContinuation?.finish()
+        eventContinuation = nil
+        await eventPump?.value
+        eventPump = nil
+        activity?.end()
+        activity = nil
+    }
+
     public func stop() async throws -> CaptureSession.StopSummary {
         guard let session else {
             throw AksError.invariantViolated("stop() before start()")
         }
-        tap?.stop()
-        eventContinuation?.finish()
-        await eventPump?.value
-        defer {
-            activity?.end()
-            activity = nil
-        }
+        await closeExternalProducers()
         let summary = try await session.stop()
         self.session = nil
         return summary

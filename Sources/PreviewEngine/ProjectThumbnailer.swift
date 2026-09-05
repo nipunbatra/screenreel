@@ -34,8 +34,12 @@ public enum ProjectThumbnailer {
     /// the look, the package itself gains or loses entries).
     private static func modificationStamp(of projectURL: URL) -> String {
         let layout = ProjectLayout(root: projectURL)
+        // Raw media directories: replacing a segment in place (a repair)
+        // touches the directory's mtime, so it must retry too.
         let candidates = [
             projectURL, layout.manifestURL, layout.journalURL, layout.editsDirectory,
+            layout.screenDirectory, layout.cameraDirectory, layout.microphoneDirectory,
+            layout.systemAudioDirectory,
         ]
         let newest = candidates.compactMap {
             (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?

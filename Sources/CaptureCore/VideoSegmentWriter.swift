@@ -2,6 +2,22 @@ import AVFoundation
 import CoreVideo
 import Foundation
 import ProjectModel
+import Synchronization
+
+/// Lock-free mirrors of a writer's frame counters. Observers (the session
+/// heartbeat's perf trace, the stop summary) read these without queueing
+/// behind an in-flight append on the writer actor — the encoder path never
+/// waits on a reader.
+public final class WriterCounters: Sendable {
+    private let frames = Atomic<Int>(0)
+    private let dropped = Atomic<Int>(0)
+
+    public var totalFrames: Int { frames.load(ordering: .relaxed) }
+    public var droppedFrames: Int { dropped.load(ordering: .relaxed) }
+
+    func noteFrame() { frames.add(1, ordering: .relaxed) }
+    func noteDrop() { dropped.add(1, ordering: .relaxed) }
+}
 
 /// Per-track encoding settings for a segmented video writer, so screen and
 /// camera tracks share one implementation.
@@ -147,8 +163,10 @@ public actor VideoSegmentWriter {
     private var nextSequence = 1
     private var finalizeChain: Task<Void, Never> = Task {}
     private var pendingDiscontinuity = false
-    public private(set) var droppedFrames = 0
-    public private(set) var totalFrames = 0
+    /// Readable from any context without awaiting the actor.
+    public nonisolated let counters = WriterCounters()
+    public var droppedFrames: Int { counters.droppedFrames }
+    public var totalFrames: Int { counters.totalFrames }
     private var frameDurationNs: Int64 {
         Int64(1_000_000_000 / settings.nominalFrameRate)
     }
@@ -190,7 +208,7 @@ public actor VideoSegmentWriter {
         // kill the whole recording; a repeated frame carries no new image,
         // so skip it and count it.
         if segment.frameCount > 0, frame.ptsNs <= segment.lastPtsNs {
-            droppedFrames += 1
+            counters.noteDrop()
             return
         }
 
@@ -207,11 +225,11 @@ public actor VideoSegmentWriter {
         // this segment into the finalize chain meanwhile. Never touch a
         // rotated segment again — count the frame as dropped instead.
         guard current === segment else {
-            droppedFrames += 1
+            counters.noteDrop()
             return
         }
         guard segment.input.isReadyForMoreMediaData else {
-            droppedFrames += 1
+            counters.noteDrop()
             if droppedFrames == 1 || droppedFrames % 30 == 0 {
                 await onFault("video.framesDropped", "encoder back-pressure dropped \(droppedFrames) frame(s) so far")
             }
@@ -242,7 +260,7 @@ public actor VideoSegmentWriter {
         {
             standby = try? makeWriterStack(sequence: nextSequence)
         }
-        totalFrames += 1
+        counters.noteFrame()
 
         // Journal segmentOpened after the first frame lands so empty
         // segments leave no trace; ordering before segmentCommitted holds.

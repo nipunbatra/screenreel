@@ -90,13 +90,19 @@ public final class EventTapSource: @unchecked Sendable {
     /// transition). Turn it back on: a silently dead tap records nothing
     /// for the rest of the session, which is far worse than a gap.
     private func reenableTap() {
-        if let tap = tapPort {
-            CGEvent.tapEnable(tap: tap, enable: true)
-        }
+        // Lifecycle under one lock: a disabled-notification arriving on the
+        // tap thread while stop() runs must not re-enable a tap that is
+        // being torn down.
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        guard !stopRequested, let tap = tapPort else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
         statsLock.lock()
         statsLocked.reenables += 1
         statsLock.unlock()
     }
+
+    private let lifecycleLock = NSLock()
 
     /// Display geometry for the last event, reused while the pointer stays
     /// on that display (refreshed every 2 s in case of reconfiguration).
@@ -216,7 +222,18 @@ public final class EventTapSource: @unchecked Sendable {
     private var stopRequested = false
 
     public func stop() {
-        if let tap = tapPort {
+        lifecycleLock.lock()
+        // Idempotent: the coordinator's self-stop path and its normal stop
+        // may both arrive.
+        if stopRequested {
+            lifecycleLock.unlock()
+            return
+        }
+        stopRequested = true
+        let tap = tapPort
+        tapPort = nil
+        lifecycleLock.unlock()
+        if let tap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
         if let runLoop {
@@ -226,15 +243,13 @@ public final class EventTapSource: @unchecked Sendable {
         // them (main, where start() installed it); stop() is called from an
         // actor thread. stopRequested also closes the race with a pending
         // install block.
-        stopRequested = true
         let timer = shapeTimer
         shapeTimer = nil
         DispatchQueue.main.async {
             timer?.invalidate()
         }
-        if tapPort != nil {
+        if tap != nil {
             Unmanaged.passUnretained(self).release()  // balance tapCreate context retain
-            tapPort = nil
         }
     }
 

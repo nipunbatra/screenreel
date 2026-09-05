@@ -95,7 +95,10 @@ extension AppModel {
                 try FileManager.default.copyItem(at: projectURL, to: copyURL)
                 workingURL = copyURL
             } catch {
-                report["projectCopy"] = "failed: \(error.localizedDescription)"
+                // Never fall back to the user's real project.
+                report["result"] = "project-copy-failed: \(error.localizedDescription)"
+                finish()
+                return
             }
         }
         report["project"] = workingURL.path

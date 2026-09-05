@@ -43,9 +43,19 @@ public actor CaptureSession {
         /// Live operator-facing warnings: (kind, message). The mic-silence
         /// warning arrives within two seconds of samples stopping.
         public var onWarning: @Sendable (String, String) -> Void
+        /// The session is about to stop ITSELF (disk exhausted). Owners of
+        /// external producers — the cursor event tap and its pump, the
+        /// activity assertion — must shut those down; the session refuses
+        /// event-chunk commits from this point, so nothing lands in the
+        /// journal after `sessionFinalized`.
+        public var onSelfStop: @Sendable () -> Void
 
-        public init(onWarning: @escaping @Sendable (String, String) -> Void = { _, _ in }) {
+        public init(
+            onWarning: @escaping @Sendable (String, String) -> Void = { _, _ in },
+            onSelfStop: @escaping @Sendable () -> Void = {}
+        ) {
             self.onWarning = onWarning
+            self.onSelfStop = onSelfStop
         }
     }
 
@@ -285,16 +295,29 @@ public actor CaptureSession {
         paused = false
     }
 
+    /// The one in-flight stop; a second caller (operator stop racing the
+    /// disk-full self-stop, or the pill and the menu item both firing)
+    /// awaits the same result instead of failing with "stop() called twice".
+    private var stopTask: Task<StopSummary, Error>?
+
     public func stop() async throws -> StopSummary {
-        guard let layout, let manifestStore, let journal else {
+        guard layout != nil, manifestStore != nil, journal != nil else {
             throw AksError.invariantViolated("stop() before start()")
         }
         // A finished stop is safely repeatable: the disk-full self-stop may
         // have completed before the operator's own stop arrives.
         if let finishedSummary { return finishedSummary }
-        guard !stopping else {
-            throw AksError.invariantViolated("stop() called twice")
+        if let stopTask { return try await stopTask.value }
+        let task = Task { try await self.performStop() }
+        stopTask = task
+        return try await task.value
+    }
+
+    private func performStop() async throws -> StopSummary {
+        guard let layout, let manifestStore, let journal else {
+            throw AksError.invariantViolated("stop() before start()")
         }
+        if let finishedSummary { return finishedSummary }
         stopping = true
         heartbeatTask?.cancel()
 
@@ -409,6 +432,13 @@ public actor CaptureSession {
 
     public func commitEventChunk(_ chunk: EventChunkDescriptor) async throws {
         guard let journal, let manifestStore else { return }
+        // Nothing may land in the journal after the finalization sequence
+        // starts: a late cursor chunk would follow `sessionFinalized` and
+        // make a cleanly stopped project look damaged.
+        guard !stopping else {
+            throw AksError.invariantViolated(
+                "event chunk commit refused: the session is stopping")
+        }
         // The journal assigns commitSequence inside its own actor so the
         // payload always matches its record even when commits interleave.
         let record = try await journal.append(
@@ -427,6 +457,12 @@ public actor CaptureSession {
     /// Surface a fault from an externally-wired pipeline (e.g. the event
     /// chunk store driven by the CLI): warns the operator and journals it.
     public func noteExternalFault(kind: String, message: String) async {
+        // After finalization the journal is sealed; the warning still
+        // reaches the operator.
+        guard finishedSummary == nil else {
+            callbacks.onWarning(kind, message)
+            return
+        }
         await reportFault(kind: kind, message: message)
     }
 
@@ -638,6 +674,10 @@ public actor CaptureSession {
                     kind: "disk.full",
                     message: "only \(free) bytes free on the recording volume; "
                         + "stopping cleanly to keep everything captured so far readable")
+                // External producers (event tap, pump, activity assertion)
+                // belong to the owner; tell it before the finalization
+                // sequence seals the journal.
+                callbacks.onSelfStop()
                 do {
                     _ = try await stop()
                 } catch {
@@ -667,23 +707,30 @@ public actor CaptureSession {
 
         // Perf trace point: our process next to the whole machine, plus
         // whatever the probe reports (tap latency), plus writer counters.
+        // Nothing here suspends before the log call, and stop() may have
+        // started by the time the log actor returns — every later step
+        // rechecks `stopping` so no heartbeat work lands after the
+        // finalization sequence.
         let sample = perfSampler.sample()
         perfSamples.append(sample)
         var fields = sample.fields
         for (key, value) in perfProbe?() ?? [:] { fields[key] = value }
         if let videoWriter {
-            fields["videoFrames"] = .integer(Int64(await videoWriter.totalFrames))
-            fields["droppedVideoFrames"] = .integer(Int64(await videoWriter.droppedFrames))
+            // Lock-free counters: the trace must never queue behind an
+            // append on the writer actor.
+            fields["videoFrames"] = .integer(Int64(videoWriter.counters.totalFrames))
+            fields["droppedVideoFrames"] = .integer(Int64(videoWriter.counters.droppedFrames))
         }
         fields["droppedBuffers"] = .integer(Int64(droppedBufferCount))
         await perfLog?.log(.info, "perf", timeNs: clock.nowNs(), fields: fields)
+        guard !stopping else { return }
 
         // Mic-absence gate: warn within two seconds and journal the fault
         // (`docs/AUDIO_PIPELINE.md` §2).
         if configuration.microphoneEnabled, micWriter != nil, !paused {
             let now = clock.nowNs()
             let last = lastMicActivityNs ?? 0
-            if now - last > 2_000_000_000, !micSilenceReported {
+            if now - last > 2_000_000_000, !micSilenceReported, !stopping {
                 micSilenceReported = true
                 await reportFault(
                     kind: "audio.micSilent",

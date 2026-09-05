@@ -91,11 +91,17 @@ struct Record: AsyncParsableCommand {
             microphoneDeviceName: mic ? "Synthetic Microphone" : nil,
             systemAudioEnabled: systemAudio,
             segmentDurationSeconds: segmentSeconds)
+        // The event tap and its pump are created after the session starts;
+        // the disk-full self-stop must be able to close them first, so they
+        // live in a box the callback can reach.
+        let producers = ExternalProducers()
         let session = CaptureSession(
             projectURL: url, configuration: configuration,
-            callbacks: .init(onWarning: { kind, message in
-                FileHandle.standardError.write(Data("WARNING [\(kind)] \(message)\n".utf8))
-            }))
+            callbacks: .init(
+                onWarning: { kind, message in
+                    FileHandle.standardError.write(Data("WARNING [\(kind)] \(message)\n".utf8))
+                },
+                onSelfStop: { producers.close() }))
 
         let screen = SyntheticScreenSource(
             width: configuration.widthPx, height: configuration.heightPx,
@@ -194,11 +200,17 @@ struct Record: AsyncParsableCommand {
             microphoneEnabled: mic,
             systemAudioEnabled: systemAudio,
             segmentDurationSeconds: segmentSeconds)
+        // The event tap and its pump are created after the session starts;
+        // the disk-full self-stop must be able to close them first, so they
+        // live in a box the callback can reach.
+        let producers = ExternalProducers()
         let session = CaptureSession(
             projectURL: url, configuration: configuration,
-            callbacks: .init(onWarning: { kind, message in
-                FileHandle.standardError.write(Data("WARNING [\(kind)] \(message)\n".utf8))
-            }))
+            callbacks: .init(
+                onWarning: { kind, message in
+                    FileHandle.standardError.write(Data("WARNING [\(kind)] \(message)\n".utf8))
+                },
+                onSelfStop: { producers.close() }))
 
         // Disk preflight: the raw session writes video + PCM audio; running
         // out of space mid-lecture is the exact failure class this tool
@@ -265,6 +277,7 @@ struct Record: AsyncParsableCommand {
                     captureKeyboard: keystrokes)
                 try source.start()
                 tap = source
+                producers.set(tap: source, continuation: continuation)
                 await session.setPerfProbe { source.perfCounters() }
                 eventPump = Task { [session] in
                     for await record in stream {
@@ -342,6 +355,32 @@ struct Record: AsyncParsableCommand {
         for issue in summary.validation.issues where issue.severity != .info {
             print("  \(issue.severity.rawValue.uppercased()) [\(issue.code)] \(issue.message)")
         }
+    }
+}
+
+/// Holds the producers the session does not own so a session-initiated
+/// stop (disk exhausted) can close them before the journal is sealed.
+final class ExternalProducers: @unchecked Sendable {
+    private let lock = NSLock()
+    private var tap: EventTapSource?
+    private var continuation: AsyncStream<EventRecord>.Continuation?
+
+    func set(tap: EventTapSource, continuation: AsyncStream<EventRecord>.Continuation) {
+        lock.lock()
+        self.tap = tap
+        self.continuation = continuation
+        lock.unlock()
+    }
+
+    func close() {
+        lock.lock()
+        let tap = self.tap
+        let continuation = self.continuation
+        self.tap = nil
+        self.continuation = nil
+        lock.unlock()
+        tap?.stop()
+        continuation?.finish()
     }
 }
 

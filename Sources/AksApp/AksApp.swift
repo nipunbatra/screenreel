@@ -6,6 +6,14 @@ struct AksApplication: App {
     @State private var model = AppModel()
 
     init() {
+        // Opt out of persistent UI state before AppKit reads it. A signed
+        // build restores window state at launch, and after a session that
+        // ended with the main window hidden (it is ordered out while
+        // recording) or a killed process, macOS restores ZERO windows and
+        // SwiftUI never presents one: the app "launches" as a bare Dock
+        // icon. Unsigned dev builds skipped restoration, which hid this.
+        // Equivalent to launching with -ApplePersistenceIgnoreState YES.
+        UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
         // Running as a bare SwiftPM executable (swift run AksApp): become a
         // regular, activatable app with a Dock icon and key windows.
         NSApplication.shared.setActivationPolicy(.regular)
@@ -37,6 +45,14 @@ struct AksApplication: App {
                     model.startAutopilotIfRequested()
                 }
         }
+        // Always present the recorder window at launch. With a real code
+        // signature macOS restores window state, and a session that ended
+        // with the main window hidden (it is ordered out while recording,
+        // or the process was killed) restores ZERO windows — SwiftUI then
+        // never creates one and the app "launches" as a bare Dock icon.
+        // Unsigned dev builds skipped restoration, which hid this.
+        .defaultLaunchBehavior(.presented)
+        .restorationBehavior(.disabled)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open Project…") {

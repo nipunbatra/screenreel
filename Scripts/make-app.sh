@@ -110,12 +110,15 @@ codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "device.camera" \
     && echo "Entitlements verified: camera + audio-input" \
     || echo "WARNING: entitlements missing from signature"
 
-# Swap in atomically, keeping the last good bundle one step back.
+# Swap in, keeping the last good bundle one step back. Two renames, so
+# an interruption between them is rolled back instead of leaving no app.
 if [ -d "$FINAL_APP" ]; then
     rm -rf "$FINAL_APP.previous"
     mv "$FINAL_APP" "$FINAL_APP.previous"
+    trap 'if [ ! -d "$FINAL_APP" ] && [ -d "$FINAL_APP.previous" ]; then mv "$FINAL_APP.previous" "$FINAL_APP"; fi; rm -rf "$STAGE"' EXIT
 fi
 mv "$APP" "$FINAL_APP"
+trap 'rm -rf "$STAGE"' EXIT
 APP="$FINAL_APP"
 echo "Built $APP"
 echo "First launch: grant Screen Recording + Microphone + Input Monitoring in System Settings when prompted."

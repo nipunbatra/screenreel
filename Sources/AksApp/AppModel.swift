@@ -123,11 +123,21 @@ final class AppModel {
         // Harness launches (AKS_AUTOPILOT_DIR) must never pop a system
         // permission dialog on the user's screen: leave the microphone
         // meter and camera off so no AVFoundation access request fires.
-        if ProcessInfo.processInfo.environment["AKS_AUTOPILOT_DIR"] != nil {
+        let environment = ProcessInfo.processInfo.environment
+        let harness = environment["AKS_AUTOPILOT_DIR"] != nil
+        if harness {
             microphoneEnabled = false
             cameraEnabled = false
         }
-        refreshDisplays()
+        // Enumerating displays is what triggers the Screen Recording
+        // consent prompt for a binary macOS has not seen before. For an
+        // editor-only harness run that prompt would sit on the user's
+        // screen unanswered — and with it pending, the app never gets its
+        // window. Only a real-capture harness run (or a normal launch)
+        // touches ScreenCaptureKit at startup.
+        if !harness || environment["AKS_AUTOPILOT_RECORD"] != nil {
+            refreshDisplays()
+        }
         refreshRecents()
         startActivationRefresh()
     }
