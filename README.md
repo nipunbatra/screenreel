@@ -87,7 +87,12 @@ swift build -c release
 .build/release/aks recover   <project.aks>   # crash recovery to a fresh copy
 .build/release/aks extract   <project.aks> <dir>   # raw media + events.csv/json
 .build/release/aks inspect   <project.aks> --journal
+.build/release/aks perf      <project.aks> --trace   # CPU/system load/drops per second
 ```
+
+If a recording felt laggy, `aks perf` answers why from the project itself:
+every session keeps a per-second trace of the app's CPU next to the whole
+machine's, plus frame drops and cursor-tap latency (`diagnostics/perf.jsonl`).
 
 A recording is a `.aks` package: 4-second finalized HEVC/H.264 `.mov` screen
 segments, torn-tail-safe PCM `.caf` audio segments, JSONL cursor/click chunks,

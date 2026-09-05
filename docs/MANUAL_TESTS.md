@@ -60,3 +60,18 @@ writes are designed for exactly this.
    the permission, not a hang or crash.
 2. Deny Input Monitoring; `aks record` must record screen/audio and print the
    events-disabled warning.
+
+## Lag triage (any recording that "felt slow")
+
+1. Record 60 s of normal work (typing, window switching, scrolling) with the
+   usual settings.
+2. Stop, then run `aks perf <project.aks> --trace`.
+3. Read the digest line first: `avg CPU` is the app alone (100 = one core);
+   `system` is the whole machine. A high `system` with a low app number means
+   something else was loading the Mac. `tap max` above ~20 ms, or any
+   `tap re-enabled`, means the cursor event tap stalled — that is felt as
+   system-wide pointer lag. `dropped` above 0 means encoder back-pressure.
+4. In the per-second table, find the seconds where `proc%`, `sys%`, or
+   `tapMax` spike and correlate with what was happening on screen.
+5. Attach `diagnostics/perf.jsonl` and `perf-summary.json` to the bug report;
+   neither contains pixels, audio, or key contents.
