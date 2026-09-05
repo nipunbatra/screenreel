@@ -40,10 +40,13 @@ trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$APP/Contents/MacOS"
 cp .build/release/ScreenreelApp "$APP/Contents/MacOS/${APP_NAME}"
 
-# App icon: generated original artwork, cached across builds.
-ICON_CACHE=".build/AppIcon.icns"
-if [ ! -f "$ICON_CACHE" ] || [ "Scripts/make-icon.swift" -nt "$ICON_CACHE" ]; then
-    swift Scripts/make-icon.swift "$ICON_CACHE"
+# App icon: Assets/AppIcon.icns is the committed build of Assets/AppIcon.svg
+# (Scripts/make-icons.sh, see docs/BRAND.md). If it is missing, build it into
+# the cache from the SVG sources.
+ICON_CACHE="Assets/AppIcon.icns"
+if [ ! -f "$ICON_CACHE" ]; then
+    ICON_CACHE=".build/AppIcon.icns"
+    Scripts/make-icons.sh "$ICON_CACHE"
 fi
 mkdir -p "$APP/Contents/Resources"
 cp "$ICON_CACHE" "$APP/Contents/Resources/AppIcon.icns"
