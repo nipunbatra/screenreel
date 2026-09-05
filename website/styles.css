@@ -85,3 +85,43 @@ pre { margin:0; overflow-x:auto; font-family:var(--mono); font-size:11px; line-h
 }
 @media (max-width:370px) { .wrap { width:calc(100% - 32px); }.nav-download { font-size:10px; }.demo-controls { gap:18px; padding:18px; }.swatches { gap:8px; }.swatch { width:30px; }.document-content h3 { font-size:28px; }.document-bar { font-size:6px; }.file-tree dt { font-size:9px; }.file-tree dd { font-size:8px; }.file-tree dt::before { margin-right:6px; } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; }*,*::before,*::after { transition:none !important; animation:none !important; } }
+
+/* Real product gallery. Captions sit outside the media; no animated backdrops. */
+.gallery { padding-block:30px 100px; }
+.gallery-heading { display:grid; grid-template-columns:1.2fr 1fr; align-items:end; gap:12%; margin-bottom:34px; }
+.gallery-heading h2 { margin-top:18px; font-size:clamp(29px,3.4vw,43px); }
+.gallery-heading>p { color:var(--muted); font-size:14px; max-width:360px; padding-bottom:4px; }
+.gallery figure { margin:0; min-width:0; }
+.gallery-editor>a { display:block; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#e7e9e4; }
+.gallery-editor img { width:100%; height:auto; }
+.gallery-editor>a:hover { border-color:#8b9481; }
+.gallery figcaption { padding-top:22px; }
+.gallery h3 { font-size:23px; font-weight:500; letter-spacing:-.6px; line-height:1.3; margin-block:11px; }
+.gallery figcaption p { font-size:13px; line-height:1.85; color:var(--muted); max-width:510px; }
+.gallery-editor figcaption { display:flex; justify-content:space-between; gap:28px; align-items:start; }
+.gallery-editor figcaption>.text-link { flex-shrink:0; margin-top:5px; }
+.gallery-pair { display:grid; grid-template-columns:1.1fr 1fr; gap:32px; margin-top:58px; }
+.gallery video { display:block; width:100%; height:auto; aspect-ratio:16/9; border-radius:9px; border:1px solid var(--line); background:var(--paper-deep); }
+.demo-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-top:17px; }
+.demo-actions button { padding:5px 0; border:0; background:none; color:var(--accent); font-size:12px; }
+.demo-actions span { font-family:var(--mono); font-size:9px; color:var(--muted); }
+.demo-actions a { font-size:10px; text-decoration:underline; text-underline-offset:4px; }
+.gallery-style { display:grid; grid-template-columns:1.5fr 1fr; gap:45px; align-items:center; margin-top:55px !important; }
+.gallery-style figcaption { padding:0; }.gallery-style h3 { font-size:31px; }.gallery-alternate { margin-top:22px; }
+.gallery-note { margin-top:28px; color:var(--muted); font-size:10px; max-width:720px; }
+.gallery-status { color:var(--accent); font-size:12px; min-height:20px; margin-top:8px; }
+.visually-hidden { position:absolute; width:1px !important; height:1px !important; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+#screenshot-dialog { width:min(1500px,96vw); max-width:none; max-height:94dvh; padding:48px 12px 12px; background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:12px; }
+#screenshot-dialog::backdrop { background:#242921bb; }
+#screenshot-dialog img { width:100%; height:auto; }
+.dialog-close { position:absolute; right:17px; top:10px; border:0; background:none; padding:5px; color:var(--ink); font-size:13px; }
+.dialog-close span { font-size:19px; margin-left:12px; }
+@media (max-width:760px) {
+  .gallery { padding-block:15px 55px; }.gallery-heading { grid-template-columns:1fr; gap:22px; margin-bottom:26px; }
+  .gallery-heading h2 { font-size:34px; }.gallery-heading>p { font-size:13px; max-width:440px; }
+  .gallery-editor figcaption { display:block; }.gallery-editor figcaption>.text-link { margin-top:15px; }
+  .gallery-pair,.gallery-style { grid-template-columns:1fr; gap:36px; }.gallery-pair { margin-top:36px; }
+  .gallery-style { gap:22px; margin-top:36px !important; }.gallery-style h3 { font-size:26px; }
+  .gallery h3 { font-size:22px; }.gallery figcaption { padding-top:18px; }.gallery-style figcaption { padding:0; }
+  .gallery-note { font-size:10px; margin-top:25px; }.demo-actions { gap:10px 14px; }
+}

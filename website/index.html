@@ -14,13 +14,13 @@
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Screen Reel. Record clearly. Make it yours.">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="styles.css"><script src="site.js" defer></script>
+<link rel="stylesheet" href="styles.css"><script src="site.js" defer></script><script type="module" src="gallery.mjs"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header wrap">
   <a class="brand" href="./" aria-label="Screen Reel home"><img src="assets/mark.svg" width="36" height="36" alt=""><span>Screen Reel</span></a>
-  <nav aria-label="Main navigation"><a href="#features">The details</a><a href="#open-format">Open by design</a><a class="nav-download" href="#download">Get Screen Reel <span aria-hidden="true">↗</span></a></nav>
+  <nav aria-label="Main navigation"><a href="#gallery">See it in action</a><a href="#open-format">Open by design</a><a class="nav-download" href="#download">Get Screen Reel <span aria-hidden="true">↗</span></a></nav>
 </header>
 <main id="main">
   <section class="hero wrap" aria-labelledby="hero-title">
@@ -28,6 +28,30 @@
     <div class="hero-aside"><p class="hero-description">For the thing you’re teaching, the demo you’re sharing, and the idea that’s easier to show.</p><p>Record your screen. Shape the story with zooms, clean audio, and thoughtful framing. Keep every original.</p>
       <div class="hero-actions"><a class="button" href="#download">Get Screen Reel <span aria-hidden="true">↓</span></a><a class="text-link" href="https://github.com/nipunbatra/screenreel">Explore the source <span aria-hidden="true">↗</span></a></div><p class="availability">Apple silicon · macOS 15+ <span>·</span> Free &amp; MIT licensed <span>·</span> No account</p>
     </div>
+  </section>
+  <section class="gallery wrap" id="gallery" aria-labelledby="gallery-title">
+    <div class="gallery-heading"><div><p class="eyebrow">Inside Screen Reel</p><h2 id="gallery-title">From a take<br>to something worth sharing.</h2></div><p>The actual Mac editor, and short demos rendered by Screen Reel. A small lesson in clarity, made for this gallery.</p></div>
+    <figure class="gallery-editor">
+      <a href="assets/gallery/editor.png" data-screenshot aria-label="Enlarge the Screen Reel editor screenshot"><img src="assets/gallery/editor.png" width="1920" height="1304" loading="lazy" decoding="async" alt="Screen Reel’s native Mac editor with a teaching demo, zoom timeline, audio waveform, and framing controls"></a>
+      <figcaption><div><span class="eyebrow">01 / The editing room</span><h3>The whole story, in one place.</h3><p>Preview your take, shape a zoom, and find your way through the waveform. Click the screenshot to explore at full size.</p></div><a class="text-link" href="assets/gallery/editor.png" data-screenshot="Screen Reel editor at full size">View screenshot <span aria-hidden="true">↗</span></a></figcaption>
+    </figure>
+    <div class="gallery-pair">
+      <figure class="gallery-demo">
+        <video id="zoom-demo" data-gallery-video data-label="zoom demo" width="1280" height="720" controls muted loop playsinline preload="none" poster="assets/gallery/zoom.png" aria-label="Eight-second demo of an editable zoom into the Sketch step"><source src="assets/gallery/zoom.mp4" type="video/mp4"></video>
+        <figcaption><span class="eyebrow">02 / Direct the eye</span><h3>Move closer to the idea.</h3><p>A smooth zoom brings the detail into focus, then returns to the full frame. Adjust its timing and destination in the editor.</p><div class="demo-actions"><button class="text-link" data-play="zoom-demo" aria-pressed="false">Play zoom demo</button><span>8 sec · silent</span><a href="assets/gallery/zoom.gif">GIF</a><a href="assets/gallery/zoom.mp4">MP4</a></div></figcaption>
+      </figure>
+      <figure class="gallery-demo">
+        <video id="cursor-demo" data-gallery-video data-label="cursor demo" width="1280" height="720" controls muted loop playsinline preload="none" poster="assets/gallery/cursor.png" aria-label="Eight-second demo of smooth cursor motion and expanding click rings"><source src="assets/gallery/cursor.mp4" type="video/mp4"></video>
+        <figcaption><span class="eyebrow">03 / Follow along</span><h3>Make each click easy to follow.</h3><p>A steadier pointer, a little emphasis when you click. Cursor motion and click effects stay editable after you record.</p><div class="demo-actions"><button class="text-link" data-play="cursor-demo" aria-pressed="false">Play cursor demo</button><span>8 sec · silent</span><a href="assets/gallery/cursor.gif">GIF</a><a href="assets/gallery/cursor.mp4">MP4</a></div></figcaption>
+      </figure>
+    </div>
+    <figure class="gallery-style">
+      <video id="style-demo" data-gallery-video data-label="framing demo" width="1280" height="720" controls muted loop playsinline preload="none" poster="assets/gallery/style.png" aria-label="Six-second comparison of sage, clay, and ink backgrounds exported from the same project"><source src="assets/gallery/styles.mp4" type="video/mp4"></video>
+      <figcaption><span class="eyebrow">04 / Set the mood</span><h3>One take.<br>A few different looks.</h3><p>Give your recording some breathing room. Change the background, padding, and corners; keep the original pixels.</p><div class="demo-actions"><button class="text-link" data-play="style-demo" aria-pressed="false">Play framing demo</button><span>6 sec · silent</span><a href="assets/gallery/styles.gif">GIF</a><a href="assets/gallery/styles.mp4">MP4</a></div><a class="gallery-alternate text-link" href="assets/gallery/editor-styled.png" data-screenshot="Screen Reel editor after changing the background, padding, and corner radius">See the styling controls <span aria-hidden="true">↗</span></a></figcaption>
+    </figure>
+    <p class="gallery-note">Demo content created for this page. Screenshots show the native app; clips show its exported output. Videos play on request and pause offscreen.</p>
+    <p id="gallery-status" class="gallery-status" role="status" aria-live="polite"></p>
+    <dialog id="screenshot-dialog" aria-label="Screen Reel screenshot"><button class="dialog-close" data-close autofocus>Close screenshot <span aria-hidden="true">×</span></button><img alt=""></dialog>
   </section>
   <section class="showcase wrap" aria-labelledby="showcase-title">
     <div class="showcase-heading"><h2 id="showcase-title">Your screen, with a little direction.</h2><span>Try a look below</span></div>
@@ -83,7 +107,7 @@ screenreel export "My lesson.screenreel" lesson.mp4 \
 screenreel perf "My lesson.screenreel" --trace</code></pre><p class="terminal-note">The same engines as the app. Standard files at the end.</p></div>
   </section>
   <section class="download-section wrap section-space" id="download" aria-labelledby="download-title">
-    <div class="download-intro"><img src="assets/mark.svg" width="64" height="64" alt=""><p class="eyebrow">Screen Reel / for macOS</p><h2 id="download-title">Your next idea<br>deserves a clear take.</h2><p>Free to use, inspect, and build on. Made with Swift, native Mac capture, and an open project format.</p><a class="button" href="https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg">Download for Mac <span aria-hidden="true">↓</span></a><p class="release-note">Version 0.2.0 · Apple silicon · macOS 15+<br>Developer ID signed. Notarized by Apple. <a href="https://github.com/nipunbatra/screenreel/releases/tag/v0.2.0">Release notes &amp; checksums ↗</a></p></div>
+    <div class="download-intro"><img src="assets/mark.svg" width="64" height="64" alt=""><p class="eyebrow">Screen Reel / for macOS</p><h2 id="download-title">Your next idea<br>deserves a clear take.</h2><p>Free to use, inspect, and build on. Made with Swift, native Mac capture, and an open project format.</p><a class="button" href="https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg">Download for Mac <span aria-hidden="true">↓</span></a><p class="release-note">Version 0.2.1 · Apple silicon · macOS 15+<br>Developer ID signed. Notarized by Apple. <a href="https://github.com/nipunbatra/screenreel/releases/tag/v0.2.1">Release notes &amp; checksums ↗</a></p></div>
     <div class="build-instructions"><h3>Build it on your Mac</h3><p>Requires macOS 15+ and Swift 6.<br>The build script uses your local signing identity.</p><div class="build-code"><button class="copy-button" data-copy="build-code">Copy build commands</button><pre><code id="build-code">git clone https://github.com/nipunbatra/screenreel
 cd screenreel
 Scripts/make-app.sh</code></pre></div><p class="build-result">Creates <code>dist/Screen Reel.app</code></p><a class="text-link" href="https://github.com/nipunbatra/screenreel/blob/main/docs/DISTRIBUTION.md">Building, signing &amp; notarization <span aria-hidden="true">↗</span></a><div class="build-cli"><p>Just the command line?</p><code>swift build -c release --product screenreel --jobs 2</code><span>Your binary: <code>.build/release/screenreel</code></span></div></div>

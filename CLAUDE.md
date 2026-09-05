@@ -2,6 +2,14 @@
 
 Build Screenreel from the specifications in `README.md` and `docs/`. These documents are normative. If a convenient shortcut conflicts with a safety invariant, the invariant wins.
 
+## Latest checkpoint
+
+Screen Reel 0.2.1 adds the homepage's public-safe screenshots and demos,
+vectorized cancellable waveform loading, and cache-only editor placeholders.
+See `docs/GALLERY_PERFORMANCE_HANDOFF.md` for verification and
+`docs/FEATURE_GALLERY.md` to regenerate the media. Website tests run in the
+Pages workflow; local app and test evidence is under `.build/gallery-checks/`.
+
 ## Non-negotiable invariants
 
 - Never make the only copy of a recording a single MP4 that must be finalized to be readable.

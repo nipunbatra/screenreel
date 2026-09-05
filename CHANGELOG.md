@@ -4,6 +4,29 @@ All notable changes to Screen Reel. `Scripts/release.sh` publishes the section
 matching `VERSION` as the GitHub release notes, so keep each section
 self-contained and replace "Unreleased" with the date when cutting a release.
 
+## 0.2.1 — 2026-09-05
+
+A real product gallery and less wasted work when opening long recordings.
+
+- **See the app in action.** The homepage now includes two native editor
+  screenshots and short zoom, cursor/click, and framing demos, with small
+  GIF and MP4 downloads. All use purpose-made demo content. Videos load on
+  request, only one plays at a time, and playback pauses offscreen or in a
+  hidden tab. Screenshot enlargement works with keyboard dismissal.
+- **Faster waveforms.** Vectorized, bucket-aligned peak scanning measured
+  58% less wall time on a cached two-minute stereo 48 kHz file (five timed
+  optimized runs). This measures waveform calculation, not overall app CPU.
+  Short recordings now put transients in the correct timeline bucket;
+  stereo, gaps, overlaps, committed ends and partial reads are covered.
+- **Cancel work when closing.** Closing or switching projects cancels audio
+  waveform loading instead of continuing to scan a recording in the background.
+  Editor placeholders use an existing cached thumbnail without opening a
+  second composition/decoder when the cache is missing.
+- **Regression coverage.** Fourteen new Swift tests and eighteen website
+  checks cover waveform correctness/cancellation, thumbnail cache misses,
+  playback lifecycle, accessible media controls, links, and asset budgets.
+  The website checks now run before every GitHub Pages deployment.
+
 ## 0.2.0 — 2026-09-05
 
 Performance diagnosis and hardening, launch fix, the rename, and

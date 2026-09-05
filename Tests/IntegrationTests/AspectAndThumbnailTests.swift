@@ -51,6 +51,8 @@ final class AspectAndThumbnailTests: XCTestCase {
         let cache = ProjectThumbnailer.cacheURL(for: projectURL, height: 120)
         XCTAssertTrue(FileManager.default.fileExists(atPath: cache.path))
         XCTAssertEqual(first?.height, 120)
+        XCTAssertEqual(ProjectThumbnailer.cachedThumbnail(for: projectURL, height: 120)?.height, 120)
+        XCTAssertNil(ProjectThumbnailer.cachedThumbnail(for: projectURL, height: 180))
 
         // Second call loads the cached PNG (same content, no re-render).
         let stamp = try FileManager.default
@@ -64,9 +66,29 @@ final class AspectAndThumbnailTests: XCTestCase {
         // Invalidation removes the derived cache; raw stays untouched.
         ProjectThumbnailer.invalidate(for: projectURL)
         XCTAssertFalse(FileManager.default.fileExists(atPath: cache.path))
+        XCTAssertNil(ProjectThumbnailer.cachedThumbnail(for: projectURL, height: 120))
         let report = await Validator(options: .init(verifyChecksums: true))
             .validate(projectAt: projectURL)
         XCTAssertTrue(report.isHealthy, "\(report.issues)")
+    }
+
+    func testPlaceholderCacheMissDoesNotStartRenderingOrCreateFiles() throws {
+        let projectURL = directory.appendingPathComponent("not-opened.screenreel")
+        XCTAssertNil(ProjectThumbnailer.cachedThumbnail(for: projectURL))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: projectURL.path),
+            "A placeholder lookup must not create a failed marker or a decoder cache")
+    }
+
+    func testDamagedCachedImageReturnsNilWithoutRegenerating() throws {
+        let projectURL = directory.appendingPathComponent("damaged-cache.screenreel")
+        let cache = ProjectThumbnailer.cacheURL(for: projectURL, height: 180)
+        try FileManager.default.createDirectory(at: cache.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let invalid = Data("not a PNG".utf8)
+        try invalid.write(to: cache)
+        XCTAssertNil(ProjectThumbnailer.cachedThumbnail(for: projectURL))
+        XCTAssertEqual(try Data(contentsOf: cache), invalid)
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: ProjectThumbnailer.failureMarkerURL(for: projectURL, height: 180).path))
     }
 
     func testThumbnailOnDamagedProjectReturnsNilWithoutCrash() async throws {

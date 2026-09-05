@@ -126,3 +126,40 @@ The start screen requests display previews only on real events (open,
 source change, app activation) — zero standing WindowServer traffic —
 and rapid scrubs render at half resolution, settling to full quality
 350 ms after the last seek.
+
+## Waveform loading and editor work (0.2.1, 2026-09-05)
+
+Same M2 Max host. `swiftc -O` builds of the old and new `AudioWaveform.swift`,
+processing the identical generated 120 s stereo float32 CAF at 48 kHz into
+400 buckets. One untimed warmup and five timed runs; the file is cached by
+the OS. `Scripts/benchmark-waveform.swift` creates and verifies the signal.
+No physical audio device is involved.
+
+| Implementation | Five timed runs (seconds) | Median |
+| --- | --- | --- |
+| Scalar sample scan / fixed 1024-frame groups | .019015, .018284, .018211, .017601, .017329 | .018211 s |
+| vDSP peak scan / exact bucket boundaries | .007578, .008127, .007588, .007086, .006734 | .007578 s |
+
+**58.4% less waveform calculation wall time** in this microbenchmark. This
+is not a whole-app CPU reduction or a measured editor-open speedup. The
+vector path also fixes short-recording bucket placement, caps reads to the
+committed range/timeline, and observes cancellation between 48,000-frame
+reads. Closing or switching editors cancels both loading and waveform tasks.
+
+The placeholder now uses only an existing thumbnail cache. A cache miss
+starts no second composition or video decoder; tests assert that it creates
+no cache directory/failure marker and leaves corrupt cached files untouched.
+
+Final focused editor smoke: construction 63 ms, first decoded frame 5 ms,
+40 spread-out seeks 14.6 ms/frame on the existing synthetic 60 s 320×180
+fixture. This is a coarse regression check under current desktop load,
+not a controlled before/after comparison.
+
+Logs: `.build/gallery-checks/waveform-{before,after}.txt`,
+`waveform-tests.log`, `full-tests.log`, and `final-focused-tests.log`.
+The full suite passed 533 checks (three skips: both long opt-in gates and
+fixture regeneration); the final 18-test focused run includes the two new
+cache tests. Together these cover 535 distinct Swift checks with three
+intentional skips. The prior 0.2.0 ten-minute 4K and thirty-minute export
+measurements above remain separate evidence; they were not re-measured for
+this waveform/thumbnail change.

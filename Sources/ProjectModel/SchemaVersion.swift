@@ -20,7 +20,7 @@ public enum ProjectSchema {
     }
 
     /// Written into descriptors and journal payloads as `toolVersion`.
-    public static let toolVersion = "screenreel 0.2.0"
+    public static let toolVersion = "screenreel 0.2.1"
 
     /// Package directory suffix for new recordings.
     public static let packageExtension = "screenreel"

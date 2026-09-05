@@ -3,7 +3,7 @@ name: Deploy website to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["website/**", ".github/workflows/pages.yml"]
+    paths: ["website/**", "Tests/WebsiteTests/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify gallery behavior, assets, and download budgets
+        run: |
+          node --test Tests/WebsiteTests/*.test.mjs
+          python3 Tests/WebsiteTests/test_assets.py
       - uses: actions/configure-pages@v5
         with:
           enablement: true

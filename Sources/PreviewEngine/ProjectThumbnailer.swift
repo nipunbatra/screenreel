@@ -20,6 +20,13 @@ public enum ProjectThumbnailer {
     /// per-thumbnail context paid for every card on every launch.
     private static let renderContext = CIContext()
 
+    /// Cheap placeholder lookup for an editor that is already opening its
+    /// full composition. A cache miss must not start a second decoder or
+    /// parse the project's journal again just to display a temporary image.
+    public static func cachedThumbnail(for projectURL: URL, height: Int = 180) -> CGImage? {
+        loadPNG(at: cacheURL(for: projectURL, height: height))
+    }
+
     /// A failed render is remembered next to where the PNG would be, keyed
     /// by the project's modification stamp: a damaged project used to be
     /// re-parsed (journal + media probe) on every app launch and every
@@ -53,7 +60,7 @@ public enum ProjectThumbnailer {
     /// throwing: the browser shows a placeholder and `screenreel validate` explains.
     public static func thumbnail(for projectURL: URL, height: Int = 180) async -> CGImage? {
         let cache = cacheURL(for: projectURL, height: height)
-        if let cached = loadPNG(at: cache) {
+        if let cached = cachedThumbnail(for: projectURL, height: height) {
             return cached
         }
         let marker = failureMarkerURL(for: projectURL, height: height)

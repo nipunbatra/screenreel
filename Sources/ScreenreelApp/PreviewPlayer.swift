@@ -155,6 +155,8 @@ final class PreviewPlayer {
     /// Mic peak buckets for the timeline waveform (output timeline).
     private(set) var waveform: [Float] = []
     private var sourceWaveform: [Float] = []
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
+    @ObservationIgnored private var waveformTask: Task<[Float], Never>?
 
     /// Map source-domain peaks onto the (possibly cut) output timeline.
     private func remapWaveform() {
@@ -210,10 +212,10 @@ final class PreviewPlayer {
         self.projectURL = projectURL
         self.box = try CompositionBox(projectURL: projectURL)
         Task { [weak self] in
-            let image = await ProjectThumbnailer.thumbnail(for: projectURL)
+            let image = ProjectThumbnailer.cachedThumbnail(for: projectURL)
             if let self, !self.hasRenderedFrame { self.placeholder = image }
         }
-        Task {
+        loadTask = Task {
             self.sourceDurationNs = await box.durationNs
             self.durationNs = await box.outputDurationNs
             self.sourceSize = await box.sourceSize
@@ -227,6 +229,7 @@ final class PreviewPlayer {
             await audio.prepare(
                 micSegments: micSegments, systemSegments: systemSegments,
                 layout: layout)
+            guard !Task.isCancelled else { return }
             if let saved = try? CaptionStore.load(from: layout), !saved.isEmpty {
                 self.captions = saved
                 self.captionStatus =
@@ -243,12 +246,17 @@ final class PreviewPlayer {
             // peaks() buckets by SOURCE time — the output duration here
             // dropped/misplaced audio whenever saved clips shortened output.
             let waveformDuration = self.sourceDurationNs
-            let peaks = await Task.detached(priority: .utility) {
+            guard !Task.isCancelled else { return }
+            let task = Task.detached(priority: .utility) {
                 AudioWaveform.peaks(
                     segments: waveformSegments,
                     layout: waveformLayout,
                     durationNs: waveformDuration)
-            }.value
+            }
+            self.waveformTask = task
+            let peaks = await task.value
+            self.waveformTask = nil
+            guard !Task.isCancelled else { return }
             self.sourceWaveform = peaks
             self.remapWaveform()
         }
@@ -287,6 +295,8 @@ final class PreviewPlayer {
     }
 
     func shutdown() {
+        loadTask?.cancel()
+        waveformTask?.cancel()
         playbackTask?.cancel()
         enqueueAudio { await $0.stop() }
     }

@@ -71,10 +71,11 @@ the `screenreel` CLI opens a connection.
 
 ## Download and distribution
 
-[Download Screen Reel 0.2.0](https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg)
+[Download Screen Reel 0.2.1](https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg)
 for **Apple silicon, macOS 15+**. The installer is Developer ID signed,
 notarized by Apple, and stapled for Gatekeeper. Release notes and SHA-256
 checksums are on [GitHub Releases](https://github.com/nipunbatra/screenreel/releases).
+See the [screenshots and demos](https://nipunbatra.github.io/screenreel/#gallery).
 The version of record is the `VERSION` file. Building, signing, notarizing,
 releasing, and issuing license keys are described in
 [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md). Licenses gate nothing today —
