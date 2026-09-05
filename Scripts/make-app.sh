@@ -44,6 +44,11 @@ cp .build/release/ScreenreelApp "$APP/Contents/MacOS/${APP_NAME}"
 # (Scripts/make-icons.sh, see docs/BRAND.md). If it is missing, build it into
 # the cache from the SVG sources.
 ICON_CACHE="Assets/AppIcon.icns"
+
+# Menu-bar status item glyph (template image: black + alpha, AppKit tints it).
+for f in Assets/MenuBarIconTemplate.png Assets/MenuBarIconTemplate@2x.png; do
+    [ -f "$f" ] && cp "$f" "$APP/Contents/Resources/"
+done
 if [ ! -f "$ICON_CACHE" ]; then
     ICON_CACHE=".build/AppIcon.icns"
     Scripts/make-icons.sh "$ICON_CACHE"
