@@ -203,6 +203,34 @@
   .cli .c { color: #5b6478; }
   .cli .p { color: var(--mint); }
 
+  /* ---- download ---- */
+  .download { display: grid; grid-template-columns: 6fr 5fr; gap: 56px; align-items: start; }
+  .download p { margin-top: 16px; color: var(--muted); font-size: 1.04rem; }
+  .download .ctas { justify-content: flex-start; margin-top: 26px; }
+  .direct {
+    margin-top: 16px; font-family: var(--mono); font-size: 0.8rem; color: var(--muted);
+    word-break: break-all;
+  }
+  .direct a { color: var(--mint); }
+  .reqs {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .reqs h3 { font-family: var(--body); font-weight: 600; font-size: 0.98rem; }
+  .reqs dl { margin-top: 12px; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 0.92rem; }
+  .reqs dt { color: var(--muted); font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.04em; padding-top: 2px; }
+  .reqs dd { color: var(--text); }
+  .reqs dd span { color: var(--muted); }
+
+  /* ---- pro (hidden until pricing is decided) ---- */
+  .pro {
+    margin-top: 26px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 30px 34px;
+    display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;
+  }
+  .pro p { color: var(--muted); margin-top: 8px; }
+  .pro b { color: var(--text); font-weight: 600; }
+
   footer {
     margin-top: 120px; border-top: 1px solid var(--line);
     padding: 44px 0 64px; text-align: center; color: var(--muted); font-size: 0.92rem;
@@ -219,7 +247,7 @@
     html { scroll-behavior: auto; }
   }
   @media (max-width: 860px) {
-    .feature, .feature.flip, .band .inner { grid-template-columns: 1fr; gap: 30px; }
+    .feature, .feature.flip, .band .inner, .download, .pro { grid-template-columns: 1fr; gap: 30px; }
     .feature.flip .copy { order: 0; }
     .quiet { grid-template-columns: 1fr; }
     header { padding-top: 64px; }
@@ -237,6 +265,7 @@
         <a href="#editing">Editing</a>
         <a href="#captions">Captions</a>
         <a href="#recovery">Recovery</a>
+        <a href="#download">Download</a>
         <a href="#build">Build</a>
         <a class="nav-gh" href="https://github.com/nipunbatra/screenreel">GitHub</a>
       </div>
@@ -254,8 +283,8 @@
         on your machine.
       </p>
       <div class="ctas">
-        <a class="btn btn-primary" href="https://github.com/nipunbatra/screenreel">View on GitHub</a>
-        <a class="btn btn-ghost" href="#build">Build it in two commands</a>
+        <a class="btn btn-primary" href="#download">Download for macOS</a>
+        <a class="btn btn-ghost" href="https://github.com/nipunbatra/screenreel">View on GitHub</a>
       </div>
       <div class="facts">
         <span>macOS 15+, Apple silicon</span>
@@ -351,6 +380,59 @@
     </div>
   </section>
 
+  <section id="download" class="wrap">
+    <div class="download reveal">
+      <div class="copy">
+        <div class="eyebrow">Download</div>
+        <h2>Signed, notarized, and yours to keep.</h2>
+        <p>Every release is a Developer&nbsp;ID-signed, Apple-notarized disk image
+        published on GitHub — no installer, no account, no launcher. Drag it to
+        Applications and record.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="https://github.com/nipunbatra/screenreel/releases/latest">Latest release</a>
+          <a class="btn btn-ghost" href="https://github.com/nipunbatra/screenreel/releases">All releases</a>
+        </div>
+        <p class="direct">Permanent link to the newest disk image:<br>
+          <a href="https://github.com/nipunbatra/screenreel/releases/latest/download/Screenreel.dmg">github.com/nipunbatra/screenreel/releases/latest/download/Screenreel.dmg</a></p>
+        <p>Prefer to see what you run? <a href="#build" style="color:var(--mint)">Build it from source</a> —
+        the release is the same code, signed.</p>
+      </div>
+      <div class="reqs">
+        <h3>What you need</h3>
+        <dl>
+          <dt>macOS</dt><dd>15 (Sequoia) or later</dd>
+          <dt>Chip</dt><dd>Apple silicon <span>— on an Intel Mac, build from source</span></dd>
+          <dt>Permissions</dt><dd>Screen Recording <span>· Microphone and Input Monitoring only if you use them</span></dd>
+          <dt>Updates</dt><dd>The app checks GitHub Releases at most once a day <span>— its only network request; switch it off in the app menu</span></dd>
+          <dt>Integrity</dt><dd>SHA-256 published beside every disk image</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    PRICING_FLAG — the Pro-license block below is intentionally hidden until
+    pricing and what a license includes are decided. To publish it:
+      1. remove the `hidden` attribute from <section id="pro">
+      2. put the checkout URL in the "Buy a Pro license" href
+      3. edit the copy; do not add a price this page cannot honour
+    The app already accepts license keys (docs/DISTRIBUTION.md); nothing is gated.
+  -->
+  <section id="pro" class="wrap" hidden>
+    <div class="reveal">
+      <div class="eyebrow">Support the project</div>
+      <h2>Free forever. Pro if you'd like to fund it.</h2>
+      <div class="pro">
+        <div>
+          <b>Screenreel is MIT-licensed and complete without a license.</b>
+          <p>A Pro license funds development and comes with priority support and a
+          year of updates under your key. It is the same app — nothing is locked away.</p>
+        </div>
+        <a class="btn btn-primary" href="#pro">Buy a Pro license</a>
+      </div>
+    </div>
+  </section>
+
   <section id="build" class="wrap">
     <div class="reveal">
       <div class="eyebrow">Open source</div>
@@ -369,7 +451,7 @@ Scripts/make-app.sh                    <span class="c"># → dist/Screenreel.app
   <footer>
     <div class="rec" style="justify-content:center; display:flex;"><span class="reel"></span>Screenreel</div>
     <p>Built in the open for teaching. Recordings, transcripts, and exports never leave your Mac.</p>
-    <p>MIT licensed · macOS 15+ · <a href="https://github.com/nipunbatra/screenreel" style="color:var(--mint)">github.com/nipunbatra/screenreel</a></p>
+    <p>MIT licensed · macOS 15+ · <a href="https://github.com/nipunbatra/screenreel" style="color:var(--mint)">github.com/nipunbatra/screenreel</a> · <a href="https://github.com/nipunbatra/screenreel/releases" style="color:var(--mint)">releases</a></p>
   </footer>
 
   <script>
