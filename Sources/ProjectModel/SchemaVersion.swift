@@ -12,7 +12,7 @@ public enum AksSchema {
     public static let formatIdentifier = "in.aks.project"
 
     /// Written into descriptors and journal payloads as `toolVersion`.
-    public static let toolVersion = "aks 0.1.0"
+    public static let toolVersion = "aks 0.2.0"
 
     /// Package directory suffix.
     public static let packageExtension = "aks"

@@ -60,6 +60,12 @@ final class TenMinuteGateTests: XCTestCase {
         await pump.value
         let summary = try await session.stop()
 
+        // The perf digest explains a failure (encoder back-pressure under a
+        // saturated machine looks different from a pipeline regression).
+        if let perf = summary.perf {
+            print("TenMinuteGate perf: \(perf.headline)")
+            for concern in perf.concerns { print("TenMinuteGate concern: \(concern)") }
+        }
         // Gate: nothing hidden, nothing lost.
         XCTAssertEqual(summary.videoFrames, 18_000)
         XCTAssertEqual(summary.droppedVideoFrames, 0)

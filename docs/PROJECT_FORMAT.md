@@ -50,6 +50,8 @@ Lecture 2026-08-24.aks/
     enhancement-<uuid>.json
   diagnostics/
     capture.jsonl
+    perf.jsonl              # one perf sample per second (ADR 0007)
+    perf-summary.json       # interval-weighted digest + final counters
     recovery-<timestamp>.json
 ```
 

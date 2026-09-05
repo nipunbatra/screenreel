@@ -12,7 +12,7 @@ struct Aks: AsyncParsableCommand {
             manifest. These commands validate, recover, extract, inspect, and
             record such packages. See docs/PROJECT_FORMAT.md.
             """,
-        version: "0.1.0",
+        version: "0.2.0",
         subcommands: [
             Record.self, Export.self, Validate.self, Recover.self,
             Extract.self, Inspect.self, Env.self, Diagnose.self,
