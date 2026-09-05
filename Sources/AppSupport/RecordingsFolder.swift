@@ -30,8 +30,12 @@ public enum RecordingsFolder {
     ) -> (url: URL, migration: Migration) {
         let current = moviesDirectory.appendingPathComponent(folderName, isDirectory: true)
         let legacy = moviesDirectory.appendingPathComponent(legacyFolderName, isDirectory: true)
-        let currentExists = fm.fileExists(atPath: current.path)
-        let legacyExists = fm.fileExists(atPath: legacy.path)
+        func isDirectory(_ url: URL) -> Bool {
+            var flag: ObjCBool = false
+            return fm.fileExists(atPath: url.path, isDirectory: &flag) && flag.boolValue
+        }
+        let currentExists = isDirectory(current)
+        let legacyExists = isDirectory(legacy)
         switch (currentExists, legacyExists) {
         case (true, true):
             return (current, .keptBoth)
