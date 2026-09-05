@@ -4,6 +4,36 @@ All notable changes to Screen Reel. `Scripts/release.sh` publishes the section
 matching `VERSION` as the GitHub release notes, so keep each section
 self-contained and replace "Unreleased" with the date when cutting a release.
 
+## 0.3.0 — 2026-09-05
+
+Screenshots, portable background music, broader CLI capture, and actual recording demos.
+
+- **PNG screenshots.** Save the selected screen, window, app or area at native
+  resolution with Save Screenshot (⇧⌘S), or `screenreel screenshot`.
+- **Background music.** Import MP3, M4A, WAV or AIFF, adjust volume, loop a
+  short song, replace it, or remove it with undo support. Music plays in the
+  editor and both styled export paths, including projects recorded silently.
+  Original audio and a portable 48 kHz stereo working copy stay in the project.
+  Import and export stream bounded audio buffers instead of loading a whole song.
+- **Silent exports.** Turn off Include audio to omit voice, system sound and
+  music from an export while keeping the project’s audio assets.
+- **Source controls in the CLI.** `screenreel sources` lists displays, windows,
+  apps and cameras. Recording supports window, app, area and separate camera
+  selection; `screenreel music` imports and adjusts the soundtrack.
+- **Reliable recording endings.** A static silent screen now holds its final
+  frame until Stop without retaining a ScreenCaptureKit surface or encoding
+  duplicate frames. Container duration and project timing remain consistent.
+- **Explicit camera failures.** Camera capture requests authorization when
+  needed and fails with actionable guidance when access or startup fails.
+  A stopped project with an empty enabled camera track cannot report healthy.
+- **Actual footage on the homepage.** Six equal-size videos show a native Mac
+  window recording, music, a labeled controlled voice/noise comparison, zooms
+  and framing. Native app screenshots enlarge, three small GIFs are available,
+  and videos load on request with only one playing at a time.
+- **Verification.** Tests cover music conversion, portability, loops, gain,
+  silent output, normal/checkpointed export parity, cuts and speed changes,
+  screenshot geometry, static-screen duration, and camera authorization.
+
 ## 0.2.1 — 2026-09-05
 
 A real product gallery and less wasted work when opening long recordings.

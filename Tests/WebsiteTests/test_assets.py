@@ -47,9 +47,9 @@ class WebsiteAssets(unittest.TestCase):
             for key in ('aria-labelledby', 'aria-describedby'):
                 for target in attrs.get(key, '').split(): self.assertIn(target, ids)
 
-    def test_videos_are_opt_in_silent_and_have_native_controls_and_posters(self):
+    def test_videos_start_muted_and_have_native_controls_and_posters(self):
         videos = [a for tag, a in self.page.elements if tag == 'video']
-        self.assertEqual(len(videos), 3)
+        self.assertEqual(len(videos), 6)
         for video in videos:
             self.assertNotIn('autoplay', video)
             self.assertEqual(video['preload'], 'none')
@@ -58,6 +58,43 @@ class WebsiteAssets(unittest.TestCase):
             self.assertTrue((SITE / video['poster']).is_file())
         buttons = {a['data-play'] for _, a in self.page.elements if 'data-play' in a}
         self.assertEqual(buttons, {v['id'] for v in videos})
+
+    def test_every_video_has_the_same_display_aspect_and_audio_is_labeled(self):
+        videos = [a for tag, a in self.page.elements if tag == 'video']
+        for video in videos:
+            self.assertEqual((video['width'], video['height']), ('1280', '720'))
+        audible = {a['data-play'] for _, a in self.page.elements if 'data-audible' in a}
+        self.assertEqual(audible, {'music-demo', 'voice-original-demo', 'voice-clean-demo'})
+        css = (SITE / 'styles.css').read_text()
+        self.assertIn('grid-template-columns:repeat(2,minmax(0,1fr))', css)
+        self.assertIn('aspect-ratio:16/9; object-fit:contain', css)
+
+    def test_audio_comparisons_really_contain_sound_tracks(self):
+        def child_boxes(data):
+            offset = 0
+            while offset + 8 <= len(data):
+                size, name = struct.unpack('>I4s', data[offset:offset+8])
+                header = 8
+                if size == 1:
+                    size = struct.unpack('>Q', data[offset+8:offset+16])[0]
+                    header = 16
+                if size == 0: size = len(data) - offset
+                self.assertGreaterEqual(size, header)
+                self.assertLessEqual(offset + size, len(data))
+                yield name, data[offset+header:offset+size]
+                offset += size
+        for file in self.gallery.glob('*.mp4'):
+            handlers = []
+            for name, moov in child_boxes(file.read_bytes()):
+                if name != b'moov': continue
+                for name, trak in child_boxes(moov):
+                    if name != b'trak': continue
+                    for name, mdia in child_boxes(trak):
+                        if name != b'mdia': continue
+                        for name, hdlr in child_boxes(mdia):
+                            if name == b'hdlr': handlers.append(hdlr[8:12])
+            self.assertEqual(handlers.count(b'vide'), 1, file.name)
+            self.assertEqual(handlers.count(b'soun'), int(file.stem in {'music', 'voice-original', 'voice-clean'}), file.name)
 
     def test_screenshot_has_real_dimensions_alt_and_lazy_decode(self):
         screenshots = [a for tag, a in self.page.elements if tag == 'img' and 'gallery/' in a.get('src', '')]
@@ -74,13 +111,13 @@ class WebsiteAssets(unittest.TestCase):
     def test_public_media_stays_within_small_download_budgets(self):
         for file in self.gallery.glob('*'):
             if file.suffix == '.gif': self.assertLess(file.stat().st_size, 650_000, file.name)
-            if file.suffix == '.mp4': self.assertLess(file.stat().st_size, 300_000, file.name)
+            if file.suffix == '.mp4': self.assertLess(file.stat().st_size, 1_000_000, file.name)
             if file.suffix == '.png': self.assertLess(file.stat().st_size, 450_000, file.name)
-        self.assertLess(sum(p.stat().st_size for p in self.gallery.glob('*') if p.is_file()), 2_500_000)
+        self.assertLess(sum(p.stat().st_size for p in self.gallery.glob('*') if p.is_file()), 6_000_000)
 
     def test_mp4_metadata_precedes_media_for_fast_playback(self):
         files = list(self.gallery.glob('*.mp4'))
-        self.assertEqual(len(files), 3)
+        self.assertEqual(len(files), 6)
         for file in files:
             data, boxes, offset = file.read_bytes(), [], 0
             while offset + 8 <= len(data):
@@ -107,7 +144,7 @@ class WebsiteAssets(unittest.TestCase):
 
     def test_gallery_has_usable_no_script_links_and_no_external_embeds(self):
         links = [a['href'] for tag, a in self.page.elements if tag == 'a' and 'href' in a]
-        for name in ('zoom', 'cursor', 'styles'):
+        for name in ('zoom', 'window', 'styles'):
             for extension in ('mp4', 'gif'):
                 self.assertIn(f'assets/gallery/{name}.{extension}', links)
         self.assertFalse(any(tag == 'iframe' for tag, _ in self.page.elements))

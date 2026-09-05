@@ -36,6 +36,10 @@ Lecture 2026-08-24.screenreel/
     cursors/
       descriptor-0001.json
       descriptor-0001.png
+  assets/
+    music/
+      <uuid>-original.mp3   # imported original, never rewritten
+      <uuid>.caf            # 48 kHz stereo Float32 working copy
   edits/
     timeline.json
     captions.json
@@ -160,3 +164,17 @@ Recovery trusts committed media and journal ordering, not the last manifest alon
 ## 9. Raw extraction guarantee
 
 The Finder package menu and CLI provide **Reveal raw files** and `screenreel extract PROJECT DESTINATION`. Extraction copies or hard-links committed screen, mic, system-audio, and camera assets plus a CSV/JSON event export. It works even when the editor cannot load the timeline.
+
+## Imported background music (0.3.0)
+
+The optional `music` object in `edits/timeline.json` contains `path`,
+`originalPath`, `name`, `volume` (0–1) and `loops` (boolean). Both paths are
+package-relative under `assets/music/`. Missing `music` means no soundtrack;
+older edit documents remain readable without migration. Recorded tracks and
+the capture journal are not modified by music import or removal.
+
+Music is anchored at output timeline zero and continues across cuts and speed
+changes. Trimming removes the corresponding beginning/end of the music too.
+A short non-looping song is followed by silence. Styled and checkpointed
+exports mix the music with recorded audio; raw export contains recorded media
+only. Disabling export audio removes all audio tracks from the output.

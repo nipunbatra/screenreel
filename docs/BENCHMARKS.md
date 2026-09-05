@@ -163,3 +163,45 @@ cache tests. Together these cover 535 distinct Swift checks with three
 intentional skips. The prior 0.2.0 ten-minute 4K and thirty-minute export
 measurements above remain separate evidence; they were not re-measured for
 this waveform/thumbnail change.
+
+## Actual window capture and music (0.3.0, 2026-09-05)
+
+Production ScreenCaptureKit window capture of the purpose-made animated Wave
+Lab Mac app, 1920×1148 native Retina pixels, nominal 30 fps, HEVC. These are
+short observations under normal desktop load, not a controlled comparison
+against another recorder or a long-duration stability claim.
+
+| Capture | Duration | Process CPU, mean / peak | Peak RSS | Committed screen frames | Handoff drops |
+| --- | --- | --- | --- | --- | --- |
+| Silent window, no events | 13.44 s | 5.09% / 8.37% | 42.3 MiB | 381 | 0 |
+| Window with system audio | 24.65 s | 12.92% / 17.32% | 57.7 MiB | 494 | 0 |
+
+Both projects validated without errors; the system-audio take has an empty
+cursor event-track warning because accessibility button actions do not emit
+physical input events. Its audio remains local. ScreenCaptureKit can omit
+unchanged frames, so delivered frame counts are not a constant-rate target.
+
+An idle silent screen previously ended at its last delivered frame. The fix
+extends the final container session to Stop with `AVAssetWriter.endSession`.
+A regression stores one frame for ten seconds and decodes it at the beginning,
+middle and end, checking both container and manifest duration. Retaining an
+SCK sample for a stop-time append was tried and rejected: it starved the live
+surface pool. The final implementation retains no extra capture surface and
+does not re-encode duplicates. See decision 0011.
+
+Music import converts in bounded blocks off the UI thread. Export reuses one
+24,000-frame stereo PCM buffer and an open file regardless of song length;
+normal and checkpointed exports share the same mixer. Preview plays the
+portable working file. This release does not claim a measured whole-app
+speedup from adding music.
+
+In the published controlled speech-plus-hiss fixture, RMS over the final
+three seconds of noise falls from −32.10 to −52.12 dBFS after cleanup (20.02 dB).
+The speech interval from 2–6 s changes from −15.25 to −16.22 dBFS. Noise
+estimation adapts over time, so the first half-second has little attenuation.
+These measurements describe this fixture, not all microphones or noise types.
+The reusable-buffer denoiser speed measurement from 0.2.0 remains above.
+
+Local evidence: `.build/gallery-checks/public-media-030.json`,
+`.build/real-gallery/*/diagnostics/perf-summary.json`, and
+`.build/gallery-checks/release-final-tests-030.log`.

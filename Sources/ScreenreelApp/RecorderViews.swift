@@ -81,6 +81,17 @@ struct StartView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
                 .keyboardShortcut("r")
+                .disabled(model.isTakingScreenshot)
+                Button {
+                    model.takeScreenshot()
+                } label: {
+                    Label(model.isTakingScreenshot ? "Capturing…" : "Save Screenshot", systemImage: "camera.viewfinder")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.isTakingScreenshot)
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .help("Save the selected screen, window, area or app as a PNG at the selected resolution.")
                 let hotkey = model.preferences.hotkey(for: .toggleRecording)
                 if hotkey != .off {
                     Text("\(hotkey.label) from any app · or the menu bar")

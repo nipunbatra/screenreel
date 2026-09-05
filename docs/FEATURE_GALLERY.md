@@ -1,76 +1,73 @@
 # Homepage feature gallery
 
-The homepage presents the native editor, editable zooms, cursor/click effects,
-and three background treatments. Two editor PNGs can be enlarged in a native
-HTML dialog. Three silent clips are available inline as H.264 MP4 and as small
-GIF downloads. The earlier interactive framing illustration is still below
-this gallery; its controls continue to work independently.
+The homepage shows the native editor and six equal-size 16:9 demos: silent
+window capture, imported music, original and cleaned voice, editable zoom,
+and three frame treatments. PNG screenshots open at full size. Optional
+4-second GIF excerpts are linked rather than animated in the background.
 
-## Content provenance
+## Media provenance
 
-Every published asset under `website/assets/gallery/` uses the purpose-made
-**A clear explanation** project. It contains a generated teaching board,
-generated cursor/click events and a generated tone for the editor's waveform.
-No desktop screenshot, microphone, camera, lecture recording, account data or
-other personal file is included. Public videos contain no audio track.
+`Scripts/gallery-wave-lab.swift` is a small native Mac app with an animated
+waveform and real buttons. It is the subject of an **actual ScreenCaptureKit
+window capture**, using Screen Reel's production CLI. No generated pixel
+source or generated cursor events are substituted for captured video.
 
-`Scripts/make-gallery.swift` draws the board, passes frames through the real
-`CaptureSession`, stores events with `EventChunkStore`, and renders the clips
-through `StyledExporter`/`ProjectComposition`. The framing sequence shows
-three exported still frames held for two seconds each. These are examples of
-exported output, not fabricated recordings of someone clicking the app UI.
+The silent and music clips share one real take. `Scripts/record-voice-demo.swift`
+records the actual Wave Lab window while feeding a clearly labeled controlled
+voice file to the microphone-track writer. The voice is macOS Samantha speech
+with seeded white noise; it does not access a physical microphone. Both voice
+clips export the same project with `micNoiseReduction` off/on. The soundtrack
+is an original synthesized instrumental loop imported through `MusicAsset`.
 
-Editor screenshots are the app's native view snapshots from its existing
-`Autopilot` harness. The actual preview frame is read back from its Metal
-surface because AppKit's view snapshot alone omits CAMetalLayer content.
-The screenshots show the editor content; the separate WindowServer captures
-were black on this host and are not used. No image generator or mock app UI
-was used for the product screenshots.
+`Scripts/export-real-gallery.swift` renders through `StyledExporter` and
+`ProjectComposition`. The style comparison holds three exported stills for
+two seconds each. Editor PNGs are actual WindowServer captures of the running
+app, including its Metal preview and native toolbar. The music inspector
+screenshot was captured after changing volume, toggling looping, removing
+music and restoring it with Undo in the UI. The full-resolution capture PNG
+uses the new screenshot command. PNG optimization is lossless.
 
-## Reproduce
+Only purpose-made public demo content is published. The separate system-audio
+capture used for local verification and all project packages remain in `.build/`.
+No microphone, webcam, personal desktop, account or lecture content is published.
 
-Requires the project's normal Swift toolchain and `ffmpeg`; no website build
-system or npm dependencies are needed. Use a fresh output directory because
-project creation deliberately refuses to overwrite a recording.
+## Reproduction
+
+Build the release products with `Scripts/make-app.sh` and
+`swift build -c release --scratch-path .build/distribution --jobs 2`.
+Compile `gallery-wave-lab.swift` as an AppKit executable inside a small app
+bundle. Run it, then list its window with `screenreel sources`. Keep the demo
+window visible while recording and interact with its waveform buttons.
 
 ```sh
-Scripts/make-gallery.sh .build/gallery-media
-Scripts/make-app.sh
-SCREENREEL_AUTOPILOT_DIR="$PWD/.build/gallery-checks/editor" \
-SCREENREEL_AUTOPILOT_PROJECT="$PWD/.build/gallery-media/A clear explanation.screenreel" \
-SCREENREEL_AUTOPILOT_PLAY_SECONDS=5 \
+screenreel record --window WINDOW_ID --no-mic --duration 13 \
+  --output '.build/real-gallery/Silent window.screenreel'
+screenreel screenshot .build/real-gallery/capture.png --window WINDOW_ID
+bash Scripts/run-gallery-helper.sh Scripts/record-voice-demo.swift WINDOW_ID .build/real-gallery
+bash Scripts/run-gallery-helper.sh Scripts/export-real-gallery.swift .build/real-gallery
+SCREENREEL_AUTOPILOT_DIR="$PWD/.build/gallery-checks/editor-030" \
+SCREENREEL_AUTOPILOT_PROJECT="$PWD/.build/real-gallery/Silent window.screenreel" \
+SCREENREEL_AUTOPILOT_MUSIC="$PWD/.build/real-gallery/demo-music.wav" \
   'dist/Screen Reel.app/Contents/MacOS/Screen Reel'
-# After report.txt says PASS, close the harness app.
-Scripts/prepare-gallery-media.sh .build/gallery-media .build/gallery-checks/editor
+# Wait for report.txt = PASS. Capture the audio inspector of this demo project
+# with screenreel screenshot, then close only the harness process you launched.
+bash Scripts/prepare-real-gallery-media.sh
 node --test Tests/WebsiteTests/*.test.mjs
 python3 Tests/WebsiteTests/test_assets.py
 ```
 
-The harness edits a copy under its output directory. Original project files
-remain under `.build/` and are never committed. Final web assets are the only
-exception to the repository's general MP4 ignore rule.
+Use fresh recording package paths; capture refuses to overwrite a project.
+The harness edits a copy. The controlled audio fixtures are local build inputs,
+not bundled third-party media or licensed songs.
 
-## Loading and accessibility
+## Loading, accessibility and regression gates
 
-- Native video controls, mute, inline playback and static posters. No autoplay.
-- `preload="none"`; videos remain at readyState 0 until requested in the
-  verified browser. GIFs are download links and consume no animation CPU on
-  the homepage.
-- One active video; native controls and the explicit play buttons share the
-  same lifecycle. Leaving the viewport or hiding the page pauses playback.
-  Returning never starts it automatically.
-- Screenshot links work without JavaScript. With JavaScript, a labeled HTML
-  dialog opens; Escape closes it and restores focus to the original link.
-  Modified clicks retain the browser's usual open-in-another-tab behavior.
-- Native MP4/GIF links remain available if inline playback fails. Controls
-  announce errors through a polite status region.
-- Fixed intrinsic image/video dimensions prevent layout jumps. Responsive
-  single-column gallery on small screens; no horizontal overflow at 390,
-  768 or the default 1280 px viewport.
+All videos use native controls, fixed 1280×720 dimensions, `preload="none"`,
+and no autoplay. Explicit audio buttons enable sound and replay the comparison
+from its beginning. Only one video plays at once; hidden pages and offscreen
+videos pause without automatic resumption. GIFs and MP4s have direct fallback
+links. Screenshot links work without JavaScript; enhanced dialogs support Escape.
 
-Before each Pages deploy, CI runs ten playback tests and eight HTML/media
-checks. These include missing files/anchors, duplicate IDs, accessible names,
-no-autoplay defaults, real animated GIF headers, MP4 fast-start metadata,
-screenshot dimensions and per-file/total byte budgets. The gallery adds
-about 1.9 MiB including optional GIFs; the three MP4s together are about
-257 KiB. Only requested media is decoded.
+The Pages workflow runs playback lifecycle tests and offline HTML/media gates.
+These verify local links, accessibility names, dimensions, audio track presence,
+muted defaults, real animated GIFs, fast-start MP4 metadata and download budgets.

@@ -281,9 +281,9 @@ public enum CheckpointedExporter {
 
         let sampleRate = 48_000.0
         let audioSegments = composition.micSegments + composition.systemSegments
-        let mixChannels = audioSegments.compactMap { $0.audio?.channels }.max() ?? 1
+        let mixChannels = max(composition.edits.music == nil ? 1 : 2, audioSegments.compactMap { $0.audio?.channels }.max() ?? 1)
         var audioInput: AVAssetWriterInput?
-        if options.includeAudio, !audioSegments.isEmpty {
+        if options.includeAudio, !audioSegments.isEmpty || composition.edits.music != nil {
             let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: sampleRate,
@@ -312,6 +312,7 @@ public enum CheckpointedExporter {
             let micSegments = composition.micSegments
             let systemSegments = composition.systemSegments
             let denoise = composition.edits.micNoiseReduction
+            let music = composition.edits.music
             let clipTimeline = composition.clipTimeline
             let rangeStart = checkpoint.rangeStartNs
             let rangeEnd = checkpoint.rangeEndNs
@@ -323,7 +324,7 @@ public enum CheckpointedExporter {
                     sampleRate: sampleRate, mixChannels: mixChannels,
                     rangeStartNs: rangeStart, rangeEndNs: rangeEnd,
                     clipTimeline: clipTimeline,
-                    denoiseMic: denoise,
+                    denoiseMic: denoise, music: music,
                     progress: progress)
             }
         }

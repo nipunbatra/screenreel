@@ -132,7 +132,7 @@ final class CLISurfaceTests: XCTestCase {
 
         let expected: Set<String> = [
             "record", "export", "validate", "recover", "extract", "inspect",
-            "selftest", "env", "diagnose", "captions", "perf",
+            "selftest", "env", "diagnose", "captions", "perf", "screenshot", "sources", "music",
         ]
         XCTAssertEqual(
             Set(subcommands), expected,
@@ -146,6 +146,28 @@ final class CLISurfaceTests: XCTestCase {
                 "\(subcommand) --help printed no usage: \(help.stdout)")
             assertNoStackTrace(help.stderr, "\(subcommand) --help")
         }
+    }
+
+    func testNewCommandsRejectInvalidOptionsBeforeAccessingCaptureOrFiles() throws {
+        try requireBinary()
+        for arguments in [
+            ["screenshot", "test.png", "--window", "1", "--app", "com.example.app"],
+            ["screenshot", "test.png", "--area", "0,0,-10,50"],
+            ["screenshot", "test.png", "--area", "0,0,nan,50"],
+            ["record", "--fps", "nan"],
+            ["record", "--duration", "-1"],
+            ["record", "--width", "3"],
+            ["record", "--synthetic", "--camera"],
+            ["music", "absent.screenreel", "--volume", "2"],
+            ["music", "absent.screenreel", "--loop", "--no-loop"],
+            ["music", "absent.screenreel", "--remove", "--file", "song.mp3"]
+        ] {
+            let result = try run(arguments)
+            XCTAssertEqual(result.status, 64, result.stderr)
+            assertNoStackTrace(result.stderr, arguments.joined(separator: " "))
+        }
+        let version = try run(["--version"])
+        XCTAssertEqual(version.stdout.trimmingCharacters(in: .whitespacesAndNewlines), ProjectSchema.toolVersion)
     }
 
     // MARK: - Corrupt input

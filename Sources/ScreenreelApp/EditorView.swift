@@ -674,6 +674,7 @@ struct InspectorView: View {
     @State private var newPresetName = ""
     @State private var showTranscript = false
     @State private var resumableExport = false
+    @State private var exportAudio = true
 
     var body: some View {
         ScrollView {
@@ -1092,6 +1093,7 @@ struct InspectorView: View {
             Text("Spectral noise gate on the mic at export — fan hum and hiss drop out, your voice stays. Raw audio is never modified.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            MusicControls(player: player)
         }
         .toggleStyle(.switch)
     }
@@ -1351,6 +1353,8 @@ struct InspectorView: View {
                 Text(exportPreset.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Toggle("Include audio", isOn: $exportAudio)
+                    .help("Turn off to export a silent video, including when music is added.")
                 Toggle("Resumable (safe for long lectures)", isOn: $resumableExport)
                     .font(.callout)
                     .help("Renders in checkpointed segments inside the project. If the export is interrupted, exporting again resumes instead of starting over.")
@@ -1411,6 +1415,6 @@ struct InspectorView: View {
             to: url, styled: styled,
             height: styled ? exportPreset.height : nil,
             bitsPerPixelPerFrame: exportPreset.bitsPerPixelPerFrame,
-            checkpointed: styled && resumableExport)
+            checkpointed: styled && resumableExport, includeAudio: exportAudio)
     }
 }

@@ -90,3 +90,25 @@ test('cleanup stops decoders and removes playback listeners', async () => {
   await b.play();
   assert.equal(a.paused, false, 'old controller must no longer react to events');
 });
+
+
+test('sound and restart happen only after an explicit audible play request', async () => {
+  const video = new Video();
+  video.muted = true;
+  video.currentTime = 7;
+  const playback = managePlayback([video]);
+  assert.equal(video.muted, true);
+  await playback.toggle(video, {audible:true, restart:true});
+  assert.equal(video.muted, false);
+  assert.equal(video.currentTime, 0);
+  await playback.toggle(video, {audible:true, restart:true});
+  assert.equal(video.paused, true);
+});
+test('a hidden page cannot unmute or rewind audio', async () => {
+  const video = new Video();
+  video.muted = true;
+  video.currentTime = 7;
+  await managePlayback([video], {visible:()=>false}).toggle(video, {audible:true, restart:true});
+  assert.equal(video.muted, true);
+  assert.equal(video.currentTime, 7);
+});

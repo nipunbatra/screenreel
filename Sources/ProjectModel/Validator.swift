@@ -369,6 +369,13 @@ public struct Validator: Sendable {
                 committedBytes: bytes,
                 coverageEndNs: coverage))
 
+            if track.type == .camera, track.enabled ?? true, sessionStopped,
+               allSegs.isEmpty || !allSegs.contains(where: { ($0.video?.frameCount ?? 0) > 0 }) {
+                issues.append(ValidationIssue(
+                    .error, code: "camera.noneCommitted",
+                    message: "camera capture was enabled but no camera frames were committed; check Camera permission and the selected device, then record again"))
+            }
+
             // An event track was registered (permission was granted, capture
             // was intended) yet committed nothing across a cleanly stopped
             // session: cursor/click data silently went missing.

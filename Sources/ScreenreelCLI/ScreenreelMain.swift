@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import ProjectModel
 
 @main
 struct Screenreel: AsyncParsableCommand {
@@ -13,11 +14,12 @@ struct Screenreel: AsyncParsableCommand {
             inspect performance, validate, recover, and extract standard media.
             No account required. See docs/PROJECT_FORMAT.md.
             """,
-        version: "0.2.0",
+        version: ProjectSchema.toolVersion,
         subcommands: [
             Record.self, Export.self, Validate.self, Recover.self,
             Extract.self, Inspect.self, Env.self, Diagnose.self,
             Selftest.self, CaptionsExport.self, Perf.self,
+            Screenshot.self, Music.self, Sources.self,
         ])
 }
 

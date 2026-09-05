@@ -71,7 +71,7 @@ the `screenreel` CLI opens a connection.
 
 ## Download and distribution
 
-[Download Screen Reel 0.2.1](https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg)
+[Download Screen Reel 0.3.0](https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg)
 for **Apple silicon, macOS 15+**. The installer is Developer ID signed,
 notarized by Apple, and stapled for Gatekeeper. Release notes and SHA-256
 checksums are on [GitHub Releases](https://github.com/nipunbatra/screenreel/releases).
@@ -108,12 +108,36 @@ composed preview with raw-mic audio, and one-click export to MP4 — styled
 (re-encode through the same composition the preview shows) or raw (lossless
 stream copy at ~20× real time).
 
+## Screenshots and background music
+
+In the start screen, select **Screen**, **Window**, **Area** or **App**, then
+choose **Save Screenshot** (⇧⌘S). Screen Reel saves a PNG at the selected
+capture resolution and does not start microphone or webcam recording.
+
+In the editor’s **Audio** inspector, choose **Add Music…**. Import MP3, M4A,
+WAV or AIFF, adjust the music volume, and choose whether it loops. Music plays
+in the preview and in normal or resumable styled exports. Turn off **Include
+audio** for a silent export. Microphone noise reduction applies at export;
+raw capture audio and imported originals stay unchanged.
+
+Imported music is copied into `assets/music/` inside the project, alongside
+a 48 kHz stereo CAF working copy. Moving the project keeps its music. Removing
+the music clears the edit reference and preserves its assets for undo.
+
 ## CLI
 
 ```bash
 swift build -c release --product screenreel --jobs 2
 .build/release/screenreel env                       # environment + capturable displays
+.build/release/screenreel sources                   # display/window/app/camera IDs
 .build/release/screenreel record                    # real capture until Ctrl-C
+.build/release/screenreel record --window 123 --no-mic
+.build/release/screenreel record --app com.apple.Safari --system-audio
+.build/release/screenreel record --area 100,100,800,500 --camera
+.build/release/screenreel screenshot window.png --window 123
+.build/release/screenreel music <project.screenreel> --file song.mp3 --volume 0.2
+.build/release/screenreel music <project.screenreel> --no-loop
+.build/release/screenreel music <project.screenreel> --remove
 .build/release/screenreel record --synthetic --duration 30 --pace 1   # no permissions needed
 .build/release/screenreel export    <project.screenreel>            # raw assembly to MP4
 .build/release/screenreel export    <project.screenreel> --styled   # edits rendered in

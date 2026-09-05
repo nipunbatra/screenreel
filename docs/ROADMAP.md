@@ -70,7 +70,7 @@ One-hour 4K test exports at the performance target; forced quits at each stage r
 - Camera capture/layout and scene track.
 - Masks/highlights, text lanes, keyboard overlay.
 - Local captions and SRT/VTT import/export.
-- Additional aspect ratios/frames, motion blur, click sound, music lanes.
+- Additional aspect ratios/frames, motion blur, click sound, multiple music lanes. One portable background music track is available in 0.3.0.
 - GIF and optional alpha cursor-only MOV.
 
 ### Exit

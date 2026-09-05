@@ -20,10 +20,12 @@ export function managePlayback(videos, {visible = () => true, changed = () => {}
     });
   }
   return {
-    async toggle(video) {
+    async toggle(video, {audible = false, restart = false} = {}) {
       if (!videos.includes(video)) return;
       if (!video.paused) { video.pause(); return; }
       if (!visible()) return;
+      if (audible) video.muted = false;
+      if (restart) video.currentTime = 0;
       await video.play();
       // A pending play promise may resolve after the page became hidden.
       if (!visible()) video.pause();
@@ -51,7 +53,9 @@ export function mountGallery(document, Observer = globalThis.IntersectionObserve
     button.addEventListener('click', async () => {
       try {
         status.textContent = '';
-        await playback.toggle(document.getElementById(button.dataset.play));
+        await playback.toggle(document.getElementById(button.dataset.play), {
+          audible: button.hasAttribute('data-audible'), restart: button.hasAttribute('data-restart')
+        });
       } catch {
         status.textContent = 'The inline demo could not play. Open the MP4 link below it.';
       }

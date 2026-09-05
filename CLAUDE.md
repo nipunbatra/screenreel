@@ -4,11 +4,12 @@ Build Screenreel from the specifications in `README.md` and `docs/`. These docum
 
 ## Latest checkpoint
 
-Screen Reel 0.2.1 adds the homepage's public-safe screenshots and demos,
-vectorized cancellable waveform loading, and cache-only editor placeholders.
-See `docs/GALLERY_PERFORMANCE_HANDOFF.md` for verification and
-`docs/FEATURE_GALLERY.md` to regenerate the media. Website tests run in the
-Pages workflow; local app and test evidence is under `.build/gallery-checks/`.
+Screen Reel 0.3.0 adds native PNG screenshots, portable background music,
+CLI source/camera controls, actual captured homepage demos, and correct static
+screen end times. Camera permission is checked before startup and stopped
+empty camera tracks fail validation. See `docs/FEATURE_RELEASE_030.md` for
+verification and `docs/FEATURE_GALLERY.md` for media provenance/reproduction.
+Only public demo media belongs on the website; local camera tests stay ignored.
 
 ## Non-negotiable invariants
 

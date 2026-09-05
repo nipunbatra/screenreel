@@ -342,6 +342,10 @@ public actor CaptureSession {
         }
         if let finishedSummary { return finishedSummary }
         stopping = true
+        // Capture the operator's Stop time before source/writer shutdown.
+        // SCK may have sent no frame for minutes on an unchanged screen.
+        let screenEndNs = screenSource?.holdsLastFrameUntilStopped == true
+            ? (paused ? pauseStartNs : clock.nowNs()) : nil
         heartbeatTask?.cancel()
 
         // Stop sources, finish the handoff streams, drain consumers, then
@@ -357,7 +361,7 @@ public actor CaptureSession {
         micContinuation?.finish()
         systemContinuation?.finish()
         for task in consumerTasks { await task.value }
-        do { try await videoWriter?.finish() } catch {
+        do { try await videoWriter?.finish(holdingLastFrameUntil: screenEndNs) } catch {
             await reportFault(kind: "video.finishFailed", message: "\(error)")
         }
         do { try await cameraWriter?.finish() } catch {

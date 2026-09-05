@@ -53,9 +53,12 @@ public final class CameraCapture: NSObject, ScreenFrameSource, @unchecked Sendab
     }
 
     public func start(_ handler: @escaping @Sendable (VideoFrame) -> Void) async throws {
+        try await Self.requirePermission(status: AVCaptureDevice.authorizationStatus(for: .video)) {
+            await AVCaptureDevice.requestAccess(for: .video)
+        }
         self.handler.withLock { $0 = handler }
 
-        let device = deviceID.flatMap { AVCaptureDevice(uniqueID: $0) }
+        let device = deviceID.map { AVCaptureDevice(uniqueID: $0) }
             ?? AVCaptureDevice.default(for: .video)
         guard let device else {
             throw ScreenreelError.invariantViolated("no camera available")
@@ -79,6 +82,21 @@ public final class CameraCapture: NSObject, ScreenFrameSource, @unchecked Sendab
         session.addOutput(output)
         session.commitConfiguration()
         session.startRunning()
+        guard session.isRunning else {
+            self.handler.withLock { $0 = nil }
+            throw NSError(domain: "ScreenReel.Camera", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "The camera could not start. Check that it is connected and available, then try again."
+            ])
+        }
+    }
+
+    /// Shared by app and CLI; device construction alone does not request access.
+    static func requirePermission(status: AVAuthorizationStatus, request: () async -> Bool) async throws {
+        if status == .authorized { return }
+        if status == .notDetermined, await request() { return }
+        throw NSError(domain: "ScreenReel.Camera", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "Camera access is required. Allow Camera access for Screen Reel (or the terminal running screenreel) in System Settings → Privacy & Security → Camera, then record again."
+        ])
     }
 
     public func stop() async {

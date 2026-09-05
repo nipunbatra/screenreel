@@ -52,6 +52,7 @@ final class AppModel {
     enum CaptureQuality: String, CaseIterable { case native, standard }
     var captureQuality: CaptureQuality = .native
     var statusMessage: String?
+    var isTakingScreenshot = false
     var warnings: [String] = []
     let micMonitor = MicLevelMonitor()
     let hudPanel = RecordingHUDPanelController()
@@ -1139,7 +1140,7 @@ final class AppModel {
     /// Resolve the selected source into a capture configuration: true pixel
     /// dimensions, the display's point→pixel scale, and the event offset
     /// that maps display-local cursor pixels into source pixels.
-    private func makeConfiguration(display: SCKCapture.DisplayInfo) -> CaptureConfiguration? {
+    func makeConfiguration(display: SCKCapture.DisplayInfo) -> CaptureConfiguration? {
         let scale = SourceGeometry.captureScale(
             nativeWidthPx: display.widthPx,
             widthPoints: display.widthPoints,

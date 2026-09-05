@@ -143,6 +143,19 @@ extension AppModel {
         }
         report["durationNs"] = "\(player.durationNs)"
         report["zooms"] = "\(player.edits.zooms.count)"
+        if let musicPath = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_MUSIC"] {
+            player.importMusic(from: URL(fileURLWithPath: musicPath))
+            let deadline = Date().addingTimeInterval(30)
+            while Date() < deadline, player.isImportingMusic || player.edits.music == nil {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            report["musicImport"] = player.edits.music == nil ? "FAIL \(player.musicStatus ?? "timeout")" : "yes"
+            if player.edits.music != nil {
+                player.updateEdits(kind: "music-volume") { $0.music?.volume = 0.18 }
+                try? await Task.sleep(for: .milliseconds(250))
+                report["musicVolume"] = player.edits.music?.volume == 0.18 ? "yes" : "FAIL"
+            }
+        }
         snapshot("2-editor")
 
         // Play for a moment; the playhead and frame must advance.
@@ -234,7 +247,9 @@ extension AppModel {
         snapshot("5-exported")
 
         report["result"] = report["export"]?.hasPrefix("done") == true
-            && report["playbackAdvanced"] == "yes" ? "PASS" : "FAIL"
+            && report["playbackAdvanced"] == "yes"
+            && (report["musicImport"] == nil || report["musicImport"] == "yes")
+            && (report["musicVolume"] == nil || report["musicVolume"] == "yes") ? "PASS" : "FAIL"
         finish()
     }
 

@@ -154,9 +154,9 @@ public enum StyledExporter {
         var warnings: [String] = []
         let sampleRate = 48_000.0
         let audioSegments = composition.micSegments + composition.systemSegments
-        let mixChannels = audioSegments.compactMap { $0.audio?.channels }.max() ?? 1
+        let mixChannels = max(composition.edits.music == nil ? 1 : 2, audioSegments.compactMap { $0.audio?.channels }.max() ?? 1)
         var audioInput: AVAssetWriterInput?
-        if options.includeAudio, !audioSegments.isEmpty {
+        if options.includeAudio, !audioSegments.isEmpty || composition.edits.music != nil {
             let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: sampleRate,
@@ -198,6 +198,7 @@ public enum StyledExporter {
                     rangeStartNs: range.startNs, rangeEndNs: range.endNs,
                     clipTimeline: composition.clipTimeline,
                     denoiseMic: composition.edits.micNoiseReduction,
+                    music: composition.edits.music,
                     progress: progress)
             }
         }
@@ -317,6 +318,7 @@ public enum StyledExporter {
         rangeStartNs: Int64, rangeEndNs: Int64,
         clipTimeline: ClipTimeline,
         denoiseMic: Bool,
+        music: BackgroundMusic? = nil,
         progress: (@Sendable (String, Double) -> Void)?
     ) async throws -> (Int64, Int64) {
         // Any failure must still finish the audio input: the multi-input
@@ -329,7 +331,7 @@ public enum StyledExporter {
                 layout: layout, box: box,
                 sampleRate: sampleRate, mixChannels: mixChannels,
                 rangeStartNs: rangeStartNs, rangeEndNs: rangeEndNs,
-                clipTimeline: clipTimeline, denoiseMic: denoiseMic,
+                clipTimeline: clipTimeline, denoiseMic: denoiseMic, music: music,
                 progress: progress)
         } catch {
             box.input.markAsFinished()
@@ -344,6 +346,7 @@ public enum StyledExporter {
         rangeStartNs: Int64, rangeEndNs: Int64,
         clipTimeline: ClipTimeline,
         denoiseMic: Bool,
+        music: BackgroundMusic? = nil,
         progress: (@Sendable (String, Double) -> Void)?
     ) async throws -> (Int64, Int64) {
         let micReader = micSegments.isEmpty
@@ -353,6 +356,7 @@ public enum StyledExporter {
             ? nil
             : try AudioTimelineReader(segments: systemSegments, layout: layout, sampleRate: sampleRate)
         let readers = [micReader, systemReader].compactMap { $0 }
+        let musicReader = try music.map { try MusicReader(track: $0, layout: layout) }
         let denoiser = denoiseMic && micReader?.channels == 1
             ? SpectralDenoiser() : nil
         guard let audioFormat = SegmentAssembler.makeAudioFormatDescription(
@@ -430,6 +434,7 @@ public enum StyledExporter {
                     }
                 }
             }
+            try musicReader?.mix(into: &mixBuffer, frames: frames, channels: mixChannels, at: position)
             for index in 0..<(frames * mixChannels) {
                 mixBuffer[index] = max(-1, min(1, mixBuffer[index]))
             }

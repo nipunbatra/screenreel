@@ -128,6 +128,7 @@ public actor VideoSegmentWriter {
         /// Writer-lifetime drop total when this segment opened; the segment's
         /// own drop count is the delta at rotation.
         let droppedAtOpen: Int
+        var finalEndNs: Int64?
         var lastPtsNs: Int64
         var lastSourceNs: Int64
         var frameCount: Int
@@ -284,7 +285,10 @@ public actor VideoSegmentWriter {
     }
 
     /// Close the open tail segment and wait for every commit to finish.
-    public func finish() async throws {
+    public func finish(holdingLastFrameUntil endNs: Int64? = nil) async throws {
+        if let segment = current, let endNs, endNs > segment.lastPtsNs + frameDurationNs {
+            segment.finalEndNs = endNs
+        }
         rotate()
         if let stale = standby {
             stale.writer.cancelWriting()
@@ -453,6 +457,9 @@ public actor VideoSegmentWriter {
             try? FileManager.default.removeItem(at: segment.partialURL)
             return
         }
+        if let endNs = segment.finalEndNs {
+            segment.writer.endSession(atSourceTime: CMTime(value: endNs, timescale: 1_000_000_000))
+        }
         segment.input.markAsFinished()
         await segment.writer.finishWriting()
         guard segment.writer.status == .completed else {
@@ -485,7 +492,7 @@ public actor VideoSegmentWriter {
         try AtomicFile.rename(from: segment.partialURL, to: segment.finalURL)
         try AtomicFile.syncDirectory(directory)
 
-        let endPts = segment.lastPtsNs + frameDurationNs
+        let endPts = segment.finalEndNs ?? (segment.lastPtsNs + frameDurationNs)
         let descriptor = SegmentDescriptor(
             trackID: trackID,
             trackType: settings.trackType,
@@ -499,7 +506,7 @@ public actor VideoSegmentWriter {
                 nominalFrameRate: settings.nominalFrameRate,
                 frameCount: segment.frameCount),
             sourceStartNs: segment.startSourceNs,
-            sourceEndNs: segment.lastSourceNs + frameDurationNs,
+            sourceEndNs: segment.lastSourceNs + (endPts - segment.lastPtsNs),
             normalizedStartNs: segment.startPtsNs,
             normalizedEndNs: endPts,
             byteSize: size,

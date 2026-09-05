@@ -31,14 +31,14 @@ let package = Package(
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
                 "PreviewEngine", "ExportEngine", "MotionEngine", "TimelineCore",
-                "RenderGraph", "Captions", "Licensing", "AppSupport",
+                "RenderGraph", "Captions", "Licensing", "AppSupport", "AudioPipeline",
             ]
         ),
         .executableTarget(
             name: "ScreenreelCLI",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
-                "ExportEngine", "Captions", "TimelineCore",
+                "ExportEngine", "Captions", "TimelineCore", "AudioPipeline",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
@@ -50,7 +50,7 @@ let package = Package(
         // MARK: Interfaces/stubs (implemented in later milestones)
         .target(name: "TimelineCore", dependencies: ["ProjectModel"]),
         .target(name: "MotionEngine", dependencies: ["ProjectModel", "TimelineCore"]),
-        .target(name: "AudioPipeline", dependencies: ["ProjectModel"]),
+        .target(name: "AudioPipeline", dependencies: ["ProjectModel", "TimelineCore"]),
         .target(name: "Captions", dependencies: ["ProjectModel", "TimelineCore"]),
         .target(name: "RenderGraph", dependencies: ["ProjectModel", "TimelineCore", "MotionEngine"]),
         .target(
@@ -93,7 +93,7 @@ let package = Package(
             name: "IntegrationTests",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "ExportEngine",
-                "PreviewEngine", "ScreenreelCLI",
+                "PreviewEngine", "ScreenreelCLI", "AudioPipeline",
             ]
         ),
     ]

@@ -13,7 +13,7 @@ final class LegacyIdentifierTests: XCTestCase {
                 originContinuousTicks: 0, originAbsoluteTicks: 0,
                 timebaseNumer: 1, timebaseDenom: 1, originWallTime: RFC3339.now()))
         XCTAssertEqual(manifest.format, "com.nipunbatra.screenreel.project")
-        XCTAssertEqual(manifest.appVersion, "screenreel 0.2.0")
+        XCTAssertEqual(manifest.appVersion, ProjectSchema.toolVersion)
         XCTAssertEqual(ProjectSchema.packageExtension, "screenreel")
     }
 

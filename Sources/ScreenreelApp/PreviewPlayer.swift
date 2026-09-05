@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioPipeline
 import CoreImage
 import Foundation
 import Observation
@@ -194,6 +195,46 @@ final class PreviewPlayer {
     private var renderInFlight = false
     private var pendingRenderNs: Int64?
     private let audio = AudioPreview()
+    private var musicImportTask: Task<Void, Never>?
+    var isImportingMusic = false
+    var musicStatus: String?
+
+    func importMusic(from url: URL) {
+        guard !isImportingMusic else { return }
+        isImportingMusic = true
+        musicStatus = "Importing music…"
+        let layout = ProjectLayout(root: projectURL)
+        musicImportTask = Task {
+            defer { isImportingMusic = false }
+            let job = Task.detached(priority: .utility) { try MusicAsset.importFile(url, into: layout) }
+            do {
+                let music = try await withTaskCancellationHandler { try await job.value } onCancel: { job.cancel() }
+                try Task.checkCancellation()
+                updateEdits(kind: "music-import") { $0.music = music }
+                musicStatus = "Music copied into the project."
+            } catch is CancellationError {
+                musicStatus = "Music import cancelled."
+            } catch {
+                musicStatus = "Could not import music: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func cancelMusicImport() { musicImportTask?.cancel() }
+
+    private func refreshMusicPreview() {
+        let music = edits.music
+        let layout = ProjectLayout(root: projectURL)
+        let position = timeNs
+        let playing = isPlaying
+        enqueueAudio { [weak self] audio in
+            do {
+                try await audio.setMusic(music, layout: layout, outputNs: position, playing: playing)
+            } catch {
+                await MainActor.run { self?.musicStatus = "Music unavailable: \(error.localizedDescription). Import the file again." }
+            }
+        }
+    }
     /// Transport commands chained FIFO: unstructured Tasks reach the audio
     /// actor in nondeterministic order, and a stale stop landing after a
     /// play left video running silent.
@@ -230,6 +271,7 @@ final class PreviewPlayer {
                 micSegments: micSegments, systemSegments: systemSegments,
                 layout: layout)
             guard !Task.isCancelled else { return }
+            self.refreshMusicPreview()
             if let saved = try? CaptionStore.load(from: layout), !saved.isEmpty {
                 self.captions = saved
                 self.captionStatus =
@@ -295,6 +337,7 @@ final class PreviewPlayer {
     }
 
     func shutdown() {
+        musicImportTask?.cancel()
         loadTask?.cancel()
         waveformTask?.cancel()
         playbackTask?.cancel()
@@ -333,7 +376,7 @@ final class PreviewPlayer {
         // export the moment a clip was cut.
         let plan = PreviewAudioPlan.entries(
             timeline: effectiveClipTimeline, fromOutput: startNs)
-        enqueueAudio { await $0.play(plan: plan) }
+        enqueueAudio { await $0.play(plan: plan, outputNs: startNs) }
         // A readable preview at playback speed; reduced quality is reserved
         // for rapid seeks, not every frame of the finished recording.
         scrubSettleTask?.cancel()
@@ -435,7 +478,9 @@ final class PreviewPlayer {
         refreshHistoryFlags()
         Task {
             do {
+                let previousMusic = self.edits.music
                 self.edits = try await box.updateEdits(mutate)
+                if self.edits.music != previousMusic { self.refreshMusicPreview() }
                 self.durationNs = await box.outputDurationNs
                 self.timeNs = min(self.timeNs, max(0, self.durationNs - 1))
                 self.remapWaveform()
@@ -476,6 +521,7 @@ final class PreviewPlayer {
         Task {
             do {
                 self.edits = try await box.updateEdits { $0 = snapshot }
+                self.refreshMusicPreview()
                 self.durationNs = await box.outputDurationNs
                 self.timeNs = min(self.timeNs, max(0, self.durationNs - 1))
                 self.remapWaveform()
@@ -778,7 +824,8 @@ final class PreviewPlayer {
     func export(
         to outputURL: URL, styled: Bool, height: Int?,
         bitsPerPixelPerFrame: Double = 0.16,
-        checkpointed: Bool = false
+        checkpointed: Bool = false,
+        includeAudio: Bool = true
     ) {
         if case .running = exportState { return }
         exportState = .running(stage: styled ? "render" : "video", fraction: 0)
@@ -799,19 +846,19 @@ final class PreviewPlayer {
                         projectAt: projectURL, to: outputURL,
                         options: .init(
                             bitsPerPixelPerFrame: bitsPerPixelPerFrame,
-                            outputHeight: height,
+                            outputHeight: height, includeAudio: includeAudio,
                             overwrite: true, progress: progress))
                 } else if styled {
                     _ = try await StyledExporter.export(
                         projectAt: projectURL, to: outputURL,
                         options: .init(
                             bitsPerPixelPerFrame: bitsPerPixelPerFrame,
-                            outputHeight: height,
+                            outputHeight: height, includeAudio: includeAudio,
                             overwrite: true, progress: progress))
                 } else {
                     _ = try await SegmentAssembler.assemble(
                         projectAt: projectURL, to: outputURL,
-                        options: .init(overwrite: true, progress: progress))
+                        options: .init(includeAudio: includeAudio, overwrite: true, progress: progress))
                 }
                 setState(.done(outputURL))
             } catch is CancellationError {
@@ -867,6 +914,40 @@ actor AudioPreview {
     private let engine = AVAudioEngine()
     private var tracks: [Track] = []
     private var prepared = false
+    private var musicPlayer: AVAudioPlayer?
+    private var musicTrack: BackgroundMusic?
+
+    func setMusic(_ music: BackgroundMusic?, layout: ProjectLayout, outputNs: Int64, playing: Bool) throws {
+        guard let music else {
+            musicPlayer?.stop()
+            musicPlayer = nil
+            musicTrack = nil
+            return
+        }
+        if music.path != musicTrack?.path || musicPlayer == nil {
+            musicPlayer?.stop()
+            musicPlayer = nil
+            musicTrack = nil
+            let player = try AVAudioPlayer(contentsOf: music.audioURL(in: layout))
+            player.prepareToPlay()
+            musicPlayer = player
+        }
+        musicTrack = music
+        musicPlayer?.volume = music.gain
+        musicPlayer?.numberOfLoops = music.loops ? -1 : 0
+        if playing, musicPlayer?.isPlaying != true { playMusic(at: outputNs) }
+    }
+
+    private func playMusic(at outputNs: Int64) {
+        guard let player = musicPlayer, let music = musicTrack else { return }
+        let length = Int64((player.duration * 48_000).rounded())
+        guard let frame = music.sourceFrame(at: max(0, outputNs) * 48_000 / 1_000_000_000, length: length) else {
+            player.stop()
+            return
+        }
+        player.currentTime = Double(frame) / 48_000
+        player.play()
+    }
 
     func prepare(
         micSegments: [SegmentDescriptor],
@@ -901,9 +982,10 @@ actor AudioPreview {
     /// Schedule exactly the planned spans: cuts skip, sped spans stay
     /// silent, kept 1× spans play their source audio at their output
     /// offsets — the export audio pump's policy, applied to preview.
-    func play(plan: [AudioScheduleEntry]) {
-        guard prepared else { return }
+    func play(plan: [AudioScheduleEntry], outputNs: Int64) {
         stop()
+        playMusic(at: outputNs)
+        guard prepared else { return }
         do {
             try engine.start()
         } catch {
@@ -945,6 +1027,7 @@ actor AudioPreview {
     }
 
     func stop() {
+        musicPlayer?.pause()
         for track in tracks { track.player.stop() }
         engine.stop()
     }

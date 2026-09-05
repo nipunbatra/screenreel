@@ -409,6 +409,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
     /// Spectral noise reduction on the mic track at export time (raw audio
     /// is never modified).
     public var micNoiseReduction: Bool
+    public var music: BackgroundMusic?
     /// Optional trim of the exported/previewed range.
     public var trimStartNs: Int64?
     public var trimEndNs: Int64?
@@ -421,6 +422,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
         clips: [Clip] = [],
         autoZoomEnabled: Bool = true,
         micNoiseReduction: Bool = true,
+        music: BackgroundMusic? = nil,
         trimStartNs: Int64? = nil,
         trimEndNs: Int64? = nil
     ) {
@@ -432,6 +434,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
         self.clips = clips
         self.autoZoomEnabled = autoZoomEnabled
         self.micNoiseReduction = micNoiseReduction
+        self.music = music
         self.trimStartNs = trimStartNs
         self.trimEndNs = trimEndNs
     }
@@ -440,7 +443,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
     // default style rather than failing.
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, style, cursor, camera, zooms, clips
-        case autoZoomEnabled, micNoiseReduction, trimStartNs, trimEndNs
+        case autoZoomEnabled, micNoiseReduction, music, trimStartNs, trimEndNs
     }
 
     public init(from decoder: Decoder) throws {
@@ -456,6 +459,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
         // enhancement appears on projects that never chose it.
         self.micNoiseReduction =
             try c.decodeIfPresent(Bool.self, forKey: .micNoiseReduction) ?? false
+        self.music = try c.decodeIfPresent(BackgroundMusic.self, forKey: .music)
         self.trimStartNs = try c.decodeIfPresent(Int64.self, forKey: .trimStartNs)
         self.trimEndNs = try c.decodeIfPresent(Int64.self, forKey: .trimEndNs)
     }

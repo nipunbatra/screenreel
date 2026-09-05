@@ -205,6 +205,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
 
     private struct ScreenFacade: ScreenFrameSource {
         let capture: SCKCapture
+        var holdsLastFrameUntilStopped: Bool { true }
         func start(_ handler: @escaping @Sendable (VideoFrame) -> Void) async throws {
             capture.setScreenHandler(handler)
             try await capture.startIfNeeded()
@@ -263,7 +264,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
         }
     }
 
-    private func startStream() async throws {
+    private static func contentFilter(configuration: CaptureConfiguration, excludeOwnWindows: Bool) async throws -> SCContentFilter {
         let content = try await SCShareableContent.excludingDesktopWindows(
             false, onScreenWindowsOnly: true)
         guard let display = content.displays.first(where: {
@@ -280,7 +281,6 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
             }
         }
 
-        // Build the content filter for the requested source kind.
         let filter: SCContentFilter
         switch configuration.sourceKind {
         case .display, .area:
@@ -303,6 +303,32 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
             filter = SCContentFilter(
                 display: display, including: [app], exceptingWindows: excludedWindows)
         }
+
+        return filter
+    }
+
+    /// Full-resolution still of the exact recording selection. No audio/camera/session is started.
+    public static func screenshot(configuration: CaptureConfiguration, excludeOwnWindows: Bool = true) async throws -> CGImage {
+        let filter = try await contentFilter(configuration: configuration, excludeOwnWindows: excludeOwnWindows)
+        return try await SCScreenshotManager.captureImage(
+            contentFilter: filter, configuration: screenshotSettings(configuration))
+    }
+
+    static func screenshotSettings(_ capture: CaptureConfiguration) -> SCStreamConfiguration {
+        let settings = SCStreamConfiguration()
+        settings.width = max(1, capture.widthPx)
+        settings.height = max(1, capture.heightPx)
+        settings.showsCursor = false
+        settings.ignoreShadowsSingleWindow = true
+        settings.colorSpaceName = CGColorSpace.sRGB
+        if capture.sourceKind == .area, let area = capture.areaRect {
+            settings.sourceRect = CGRect(x: area.x, y: area.y, width: area.width, height: area.height)
+        }
+        return settings
+    }
+
+    private func startStream() async throws {
+        let filter = try await Self.contentFilter(configuration: configuration, excludeOwnWindows: excludeOwnWindows)
 
         let streamConfiguration = SCStreamConfiguration()
         streamConfiguration.width = configuration.widthPx
@@ -355,6 +381,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
         self.stream = nil
         try? await stream.stopCapture()
     }
+
 }
 
 // MARK: - SCStreamOutput
@@ -398,10 +425,11 @@ extension SCKCapture: SCStreamOutput {
         // Int64(nan) traps — drop the sample instead of dying mid-capture.
         guard pts.isNumeric else { return }
         let hostNs = Int64(pts.seconds * 1_000_000_000)
-        handler(VideoFrame(
+        let frame = VideoFrame(
             pixelBuffer: pixelBuffer,
             ptsNs: clock.normalizeHostNs(hostNs),
             sourceNs: hostNs,
-            sampleBuffer: sampleBuffer))
+            sampleBuffer: sampleBuffer)
+        handler(frame)
     }
 }

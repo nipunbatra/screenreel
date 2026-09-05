@@ -78,8 +78,15 @@ extension AudioChunk {
 }
 
 public protocol ScreenFrameSource: Sendable {
+    /// Real-time screen sources may go idle without ending the recording.
+    /// Deterministic/offline sources instead derive duration from their PTS.
+    var holdsLastFrameUntilStopped: Bool { get }
     func start(_ handler: @escaping @Sendable (VideoFrame) -> Void) async throws
     func stop() async
+}
+
+extension ScreenFrameSource {
+    public var holdsLastFrameUntilStopped: Bool { false }
 }
 
 public protocol AudioChunkSource: Sendable {

@@ -35,8 +35,8 @@ struct Record: AsyncParsableCommand {
     @Option(help: "Nominal frame rate.")
     var fps: Double = 30
 
-    @Option(help: "Display ID to record (see 'screenreel env').")
-    var display: Int?
+    @OptionGroup var source: CaptureSourceOptions
+    var display: Int? { source.display }
 
     @Flag(help: "Also record keystrokes for the shortcut overlay (OFF by default: keystrokes can include passwords).")
     var keystrokes = false
@@ -46,6 +46,12 @@ struct Record: AsyncParsableCommand {
 
     @Flag(help: "Capture system audio.")
     var systemAudio = false
+
+    @Flag(help: "Record a separate webcam track (requires Camera permission).")
+    var camera = false
+
+    @Option(help: "Camera device ID; implies --camera. Defaults to the Mac's default camera.")
+    var cameraDevice: String?
 
     @Flag(inversion: .prefixedNo, help: "Capture cursor/click events.")
     var events = true
@@ -58,6 +64,22 @@ struct Record: AsyncParsableCommand {
 
     @Option(help: "Synthetic pacing: 1.0 = real time, 0 = as fast as possible.")
     var pace: Double = 0
+
+    func validate() throws {
+        try source.validate()
+        guard fps.isFinite, (1...120).contains(fps), pace.isFinite, pace >= 0 else {
+            throw ValidationError("--fps must be between 1 and 120; --pace must be finite and nonnegative.")
+        }
+        if let duration, !duration.isFinite || duration <= 0 || duration > 43_200 {
+            throw ValidationError("--duration must be positive and at most 43200 seconds.")
+        }
+        for value in [width, height].compactMap({ $0 }) where value < 2 || value > 16_384 || value % 2 != 0 {
+            throw ValidationError("Capture dimensions must be even integers from 2 to 16384.")
+        }
+        if synthetic && (camera || cameraDevice != nil || source.window != nil || source.app != nil || source.area != nil) {
+            throw ValidationError("Camera, window, app and area selection require real capture; omit --synthetic.")
+        }
+    }
 
     func run() async throws {
         let stamp = RFC3339.now().replacingOccurrences(of: ":", with: "-").prefix(19)
@@ -180,26 +202,21 @@ struct Record: AsyncParsableCommand {
     // MARK: - Real capture
 
     private func recordReal(url: URL, durationNs: Int64) async throws {
-        let displays = try await SCKCapture.availableDisplays()
-        guard let target = displays.first(where: { display in
-            self.display.map { Int(display.displayID) == $0 } ?? true
-        }) else {
-            throw CLIError.failed("No capturable display. Grant Screen Recording permission to this terminal in System Settings → Privacy & Security → Screen Recording, then retry.")
-        }
-
-        let captureWidth = width ?? target.widthPx
-        let configuration = CaptureConfiguration(
-            widthPx: captureWidth,
-            heightPx: height ?? target.heightPx,
-            nominalFrameRate: fps,
-            videoCodec: codec == "h264" ? .h264 : .hevc,
-            displayID: Int(target.displayID),
-            // Pixels-per-point of the capture (not of the panel): event
-            // pixels must land in recorded-frame space.
-            displayScale: Double(captureWidth) / Double(max(1, target.widthPoints)),
-            microphoneEnabled: mic,
-            systemAudioEnabled: systemAudio,
-            segmentDurationSeconds: segmentSeconds)
+        var configuration = try await source.resolve()
+        let nativeWidth = configuration.widthPx
+        configuration.widthPx = width ?? configuration.widthPx
+        configuration.heightPx = height ?? configuration.heightPx
+        let resize = Double(configuration.widthPx) / Double(nativeWidth)
+        configuration.displayScale *= resize
+        configuration.eventOffsetXPx *= resize
+        configuration.eventOffsetYPx *= resize
+        configuration.nominalFrameRate = fps
+        configuration.videoCodec = codec == "h264" ? .h264 : .hevc
+        configuration.microphoneEnabled = mic
+        configuration.systemAudioEnabled = systemAudio
+        configuration.cameraEnabled = camera || cameraDevice != nil
+        configuration.cameraDeviceID = cameraDevice
+        configuration.segmentDurationSeconds = segmentSeconds
         // The event tap and its pump are created after the session starts;
         // the disk-full self-stop must be able to close them first, so they
         // live in a box the callback can reach.
@@ -235,12 +252,22 @@ struct Record: AsyncParsableCommand {
         }
 
         let capture = SCKCapture(configuration: configuration, clock: session.sessionClock)
-        print("Recording display \(target.displayID) at \(configuration.widthPx)x\(configuration.heightPx)@\(Int(fps)) → \(url.path)")
+        print("Recording \(configuration.sourceKind.rawValue) on display \(configuration.displayID) at \(configuration.widthPx)x\(configuration.heightPx)@\(Int(fps)) → \(url.path)")
         print("Press Ctrl-C to stop.")
-        try await session.start(
-            screen: capture.screenSource(),
-            microphone: mic ? capture.microphoneSource() : nil,
-            systemAudio: systemAudio ? capture.systemAudioSource() : nil)
+        let cameraSource = configuration.cameraEnabled
+            ? CameraCapture(clock: session.sessionClock, deviceID: cameraDevice) : nil
+        do {
+            try await session.start(
+                screen: capture.screenSource(),
+                microphone: mic ? capture.microphoneSource() : nil,
+                systemAudio: systemAudio ? capture.systemAudioSource() : nil,
+                camera: cameraSource,
+                cameraSettings: cameraSource == nil ? nil : .camera(widthPx: 0, heightPx: 0,
+                    frameRate: min(30, fps), segmentDurationNs: configuration.segmentDurationNs))
+        } catch {
+            _ = try? await session.stop()
+            throw error
+        }
 
         // Cursor/click events via a listen-only event tap.
         var tap: EventTapSource?
