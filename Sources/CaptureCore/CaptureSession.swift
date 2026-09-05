@@ -1,6 +1,20 @@
 import Diagnostics
 import Foundation
 import ProjectModel
+import Synchronization
+
+/// State the per-frame consumer tasks read and write WITHOUT hopping
+/// through the session actor: the pause flag and the last-activity
+/// stamps. Two actor hops per video frame (isPaused + noteVideoActivity)
+/// queued every frame behind whatever the actor was doing — heartbeat
+/// perf sampling, a journal append, a free-space probe — and under load
+/// that latency overflowed the bounded capture handoff (counted drops).
+final class CaptureLiveState: Sendable {
+    let paused = Atomic<Bool>(false)
+    /// Session-clock nanoseconds of the last delivered frame/chunk; 0 = none.
+    let lastVideoActivityNs = Atomic<Int64>(0)
+    let lastMicActivityNs = Atomic<Int64>(0)
+}
 
 /// Injectable free-disk-space probe so low-disk behavior is testable
 ///.
@@ -104,14 +118,18 @@ public actor CaptureSession {
     private var consumerTasks: [Task<Void, Never>] = []
     private var heartbeatTask: Task<Void, Never>?
 
-    private var paused = false
+    /// Lock-free mirror read by the consumer tasks; the actor's `paused`
+    /// is a view of it.
+    private nonisolated let live = CaptureLiveState()
+    private var paused: Bool {
+        get { live.paused.load(ordering: .relaxed) }
+        set { live.paused.store(newValue, ordering: .relaxed) }
+    }
     private var stopping = false
     /// Set once a stop finished; repeated stop() calls return it instead of
     /// failing (a disk-full self-stop may have beaten the operator to it).
     private var finishedSummary: StopSummary?
-    private var lastMicActivityNs: Int64?
     private var micSilenceReported = false
-    private var lastVideoActivityNs: Int64?
     private var videoStallReported = false
     private var lowDiskWarned = false
     private var droppedBufferCount = 0
@@ -471,7 +489,7 @@ public actor CaptureSession {
     }
 
     public func currentTimeNs() -> Int64 { clock.nowNs() }
-    public func isPaused() -> Bool { paused }
+    public nonisolated func isPaused() -> Bool { live.paused.load(ordering: .relaxed) }
 
     // MARK: - Internals
 
@@ -521,16 +539,6 @@ public actor CaptureSession {
             payload: (try? JournalPayload.fault(kind: kind, message: message)) ?? .object([:]))
     }
 
-    private func noteVideoActivity(_ ptsNs: Int64) {
-        lastVideoActivityNs = clock.nowNs()
-        videoStallReported = false
-    }
-
-    private func noteMicActivity(_ ptsNs: Int64) {
-        lastMicActivityNs = ptsNs
-        micSilenceReported = false
-    }
-
     private func noteDroppedBuffer(stream: String) async {
         droppedBufferCount += 1
         if droppedBufferCount == 1 || droppedBufferCount % 100 == 0 {
@@ -560,8 +568,9 @@ public actor CaptureSession {
         let videoWriter = self.videoWriter
         consumerTasks.append(Task { [weak self] in
             for await frame in videoStream {
-                if await self?.isPaused() == true { continue }
-                await self?.noteVideoActivity(frame.ptsNs)
+                guard let live = self?.live, let clock = self?.clock else { break }
+                if live.paused.load(ordering: .relaxed) { continue }
+                live.lastVideoActivityNs.store(clock.nowNs(), ordering: .relaxed)
                 do {
                     try await videoWriter?.append(frame)
                 } catch {
@@ -584,7 +593,8 @@ public actor CaptureSession {
             }
             consumerTasks.append(Task { [weak self] in
                 for await frame in cameraStream {
-                    if await self?.isPaused() == true { continue }
+                    guard let live = self?.live else { break }
+                    if live.paused.load(ordering: .relaxed) { continue }
                     do {
                         try await cameraWriter.append(frame)
                     } catch {
@@ -608,8 +618,9 @@ public actor CaptureSession {
             }
             consumerTasks.append(Task { [weak self] in
                 for await chunk in micStream {
-                    await self?.noteMicActivity(chunk.ptsNs)
-                    if await self?.isPaused() == true { continue }
+                    guard let live = self?.live else { break }
+                    live.lastMicActivityNs.store(chunk.ptsNs, ordering: .relaxed)
+                    if live.paused.load(ordering: .relaxed) { continue }
                     do {
                         try await micWriter.append(chunk)
                     } catch {
@@ -633,7 +644,8 @@ public actor CaptureSession {
             }
             consumerTasks.append(Task { [weak self] in
                 for await chunk in systemStream {
-                    if await self?.isPaused() == true { continue }
+                    guard let live = self?.live else { break }
+                    if live.paused.load(ordering: .relaxed) { continue }
                     do {
                         try await systemWriter.append(chunk)
                     } catch {
@@ -729,7 +741,8 @@ public actor CaptureSession {
         // (`docs/AUDIO_PIPELINE.md` §2).
         if configuration.microphoneEnabled, micWriter != nil, !paused {
             let now = clock.nowNs()
-            let last = lastMicActivityNs ?? 0
+            let last = live.lastMicActivityNs.load(ordering: .relaxed)
+            if now - last <= 2_000_000_000 { micSilenceReported = false }
             if now - last > 2_000_000_000, !micSilenceReported, !stopping {
                 micSilenceReported = true
                 await reportFault(
@@ -744,9 +757,9 @@ public actor CaptureSession {
         // stalled capture is at least VISIBLE in warnings and the journal.
         if videoWriter != nil, !paused {
             let now = clock.nowNs()
-            if let last = lastVideoActivityNs,
-                now - last > 10_000_000_000, !videoStallReported
-            {
+            let last = live.lastVideoActivityNs.load(ordering: .relaxed)
+            if last > 0, now - last <= 10_000_000_000 { videoStallReported = false }
+            if last > 0, now - last > 10_000_000_000, !videoStallReported {
                 videoStallReported = true
                 callbacks.onWarning(
                     "video.quiet",

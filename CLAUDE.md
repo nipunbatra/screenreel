@@ -24,17 +24,37 @@ Build Screenreel from the specifications in `README.md` and `docs/`. These docum
 6. Never close a capture/export issue from UI behavior alone. Inspect output with `ffprobe`, validate timestamps, and compare expected frame/audio counts.
 7. Keep commits small and label incomplete behavior clearly. Do not hide a missing feature behind a non-functional control.
 
-## First task: Milestone 0 only
+## Current state (2026-09-05)
 
-- create the Swift package/module skeleton and test targets;
-- define versioned project and event schemas;
-- implement atomic manifest writes and a write-ahead session journal;
-- implement a project validator/recovery CLI;
-- capture segmented raw screen and audio assets plus cursor/click events;
-- add a synthetic ten-minute integration test and a manual forced-quit recovery test;
-- leave the editor, motion engine, and denoiser behind interfaces/stubs.
+Milestones 0–4 are implemented: durable segmented recorder, editor with
+Metal preview, motion engine, captions, camera, styled/raw/GIF and
+checkpointed export, menu bar + global hotkeys + area picker, licensing and
+release scripts. The project was renamed from "aks" to Screenreel; old
+`.aks` packages and the `in.aks.project` format id stay readable forever
+(`ProjectSchema`), and `~/Movies/Aks` migrates to `~/Movies/Screenreel`.
 
-Do not begin editor styling until the Milestone 0 gates in `docs/ACCEPTANCE_TESTS.md` pass.
+Working rules that were learned the hard way:
+
+- Never replace `dist/Screenreel.app` with an unsigned build: an ad-hoc
+  signature invalidates every permission grant. `Scripts/make-app.sh`
+  refuses to swap in a bundle when Developer ID signing fails; use
+  `ALLOW_ADHOC=1 Scripts/make-app.sh dist-test` for throwaway bundles.
+- Harnesses: `SCREENREEL_AUTOPILOT_DIR=<dir>` drives start → editor → play →
+  restyle → export on a COPY of `SCREENREEL_AUTOPILOT_PROJECT` and writes
+  `report.txt` (result=PASS) plus window snapshots; `SCREENREEL_UX_SELFTEST_DIR`
+  exercises menus, panels, hotkeys and the area picker. Harness launches never
+  touch ScreenCaptureKit or the microphone (no permission prompts). Kill only
+  the PID you launched — several sessions run the same binary name.
+- Screen Recording permission is never available to processes launched from
+  developer tooling; real capture is verified by the owner per
+  `docs/MANUAL_TESTS.md`. Every recording writes `diagnostics/perf.jsonl`
+  and `perf-summary.json`; `screenreel perf <project> --trace` reads them.
+- One `swift build`/`swift test` per checkout at a time; agents work in
+  their own worktrees. Long gates: `SCREENREEL_RUN_LONG_TESTS=1 swift test
+  --filter TenMinuteGateTests` (fails under heavy machine load by design).
+- Performance is a feature: measure before and after (CPU, RSS, GPU,
+  WindowServer, frames rendered), record numbers in `docs/BENCHMARKS.md`,
+  and add a regression test for every win.
 
 ## Suggested modules
 
