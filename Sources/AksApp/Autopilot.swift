@@ -83,7 +83,23 @@ extension AppModel {
             finish()
             return
         }
-        openProject(at: projectURL)
+        // The harness restyles and exports the project it opens. Work on a
+        // throwaway copy under the report directory so the user's real
+        // recording never picks up the harness's orange gradient (it used
+        // to) — AKS_AUTOPILOT_IN_PLACE=1 keeps the old behavior.
+        var workingURL = projectURL
+        if ProcessInfo.processInfo.environment["AKS_AUTOPILOT_IN_PLACE"] != "1" {
+            let copyURL = directory.appendingPathComponent(projectURL.lastPathComponent)
+            try? FileManager.default.removeItem(at: copyURL)
+            do {
+                try FileManager.default.copyItem(at: projectURL, to: copyURL)
+                workingURL = copyURL
+            } catch {
+                report["projectCopy"] = "failed: \(error.localizedDescription)"
+            }
+        }
+        report["project"] = workingURL.path
+        openProject(at: workingURL)
         try? await Task.sleep(for: .seconds(3))
         guard case .editor(let player) = mode else {
             report["result"] = "editor-did-not-open: \(statusMessage ?? "unknown")"
@@ -95,8 +111,13 @@ extension AppModel {
         snapshot("2-editor")
 
         // Play for a moment; the playhead and frame must advance.
+        // AKS_AUTOPILOT_PLAY_SECONDS lengthens this for performance
+        // sampling (CPU/GPU while the preview runs at the real window size).
+        let playSeconds = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_PLAY_SECONDS"]
+            .flatMap(Double.init) ?? 2
         player.play()
-        try? await Task.sleep(for: .seconds(2))
+        try? await Task.sleep(for: .seconds(playSeconds))
+        report["framesRendered"] = "\(player.renderedFrameCount)"
         player.pause()
         report["playheadNs"] = "\(player.timeNs)"
         report["playbackAdvanced"] = player.timeNs > 500_000_000 ? "yes" : "NO"
