@@ -39,11 +39,30 @@ extension AppModel {
             window.effectiveAppearance.performAsCurrentDrawingAppearance {
                 view.cacheDisplay(in: view.bounds, to: bitmap)
             }
-            if let png = bitmap.representation(using: .png, properties: [:]) {
+            // cacheDisplay renders view drawing, not CAMetalLayer contents:
+            // the editor's preview surface comes out as its backdrop. Paint
+            // the frame it last presented into its rect so the PNG shows
+            // what the user sees (a readback the interactive path never does).
+            var editorPlayer: PreviewPlayer?
+            if case .editor(let player) = mode { editorPlayer = player }
+            let composited = Self.overlayPreviewFrame(
+                on: bitmap, contentView: view, player: editorPlayer) ?? bitmap
+            if let png = composited.representation(using: .png, properties: [:]) {
                 try? png.write(to: directory.appendingPathComponent("\(name).png"))
                 report[name] = "ok"
             } else {
                 report[name] = "png-encode-failed"
+            }
+            // Ground truth beside it: the window as WindowServer composites
+            // it (Metal layer included). An app may capture its own windows
+            // without the Screen Recording grant; if the capture comes back
+            // empty this file is simply absent.
+            if let windowImage = Self.captureOwnWindow(window), windowImage.width > 1 {
+                let rep = NSBitmapImageRep(cgImage: windowImage)
+                if let png = rep.representation(using: .png, properties: [:]) {
+                    try? png.write(to: directory.appendingPathComponent("\(name)-window.png"))
+                    report["\(name)-window"] = "\(windowImage.width)x\(windowImage.height)"
+                }
             }
         }
         func finish() {
@@ -51,6 +70,19 @@ extension AppModel {
                 .map { "\($0.key)=\($0.value)" }.joined(separator: "\n")
             try? Data((ordered + "\n").utf8).write(
                 to: directory.appendingPathComponent("report.txt"))
+        }
+        // Stage markers, appended as the run proceeds: a run that never
+        // writes its report can still be localized to the stage it reached.
+        func mark(_ stage: String) {
+            let line = "\(Date().timeIntervalSince1970) \(stage)\n"
+            let url = directory.appendingPathComponent("progress.txt")
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(Data(line.utf8))
+                try? handle.close()
+            } else {
+                try? Data(line.utf8).write(to: url)
+            }
         }
 
         try? await Task.sleep(for: .seconds(2))
@@ -115,13 +147,52 @@ extension AppModel {
         // sampling (CPU/GPU while the preview runs at the real window size).
         let playSeconds = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_PLAY_SECONDS"]
             .flatMap(Double.init) ?? 2
+        mark("play-start")
         player.play()
-        try? await Task.sleep(for: .seconds(playSeconds))
+        // Progress while playing, so a stall mid-playback is visible.
+        let playDeadline = Date().addingTimeInterval(playSeconds)
+        var tick = 0
+        while Date() < playDeadline {
+            try? await Task.sleep(for: .seconds(1))
+            tick += 1
+            mark("playing t=\(player.timeNs / 1_000_000) ms frames=\(player.renderedFrameCount)")
+            // Two live-window captures a second apart: the preview area
+            // must differ between them if presented drawables reach the
+            // screen. Plus the surface/sink wiring at that moment.
+            if tick == 3 || tick == 4 {
+                if let window = NSApplication.shared.windows.first(where: { $0.isVisible }),
+                    let image = Self.captureOwnWindow(window),
+                    let png = NSBitmapImageRep(cgImage: image)
+                        .representation(using: .png, properties: [:])
+                {
+                    try? png.write(to: directory.appendingPathComponent("play-\(tick)-window.png"))
+                }
+                if tick == 3,
+                    let content = NSApplication.shared.windows.first(where: { $0.isVisible })?.contentView
+                {
+                    let surfaces = MetalPreviewNSView.findAll(in: content)
+                    report["surfaces"] = "\(surfaces.count)"
+                    for (index, surface) in surfaces.enumerated() {
+                        report["surface\(index)"] =
+                            "sink=\(player.isFrameSink(surface)) " + surface.diagnostics
+                    }
+                }
+            }
+        }
         report["framesRendered"] = "\(player.renderedFrameCount)"
+        mark("play-end")
         player.pause()
         report["playheadNs"] = "\(player.timeNs)"
         report["playbackAdvanced"] = player.timeNs > 500_000_000 ? "yes" : "NO"
+        mark("snapshot-3-start")
         snapshot("3-played")
+        mark("snapshot-3-done")
+
+        // Direct manipulation through the real event path: a synthesized
+        // click delivered by the window must reach the Metal surface's
+        // mouse handling and re-aim the selected zoom.
+        report["tapAim"] = await verifyTapToAim(player: player)
+        mark("tap-done")
 
         // Restyle through the same mutation path the inspector uses.
         player.updateEdits { edits in
@@ -162,6 +233,121 @@ extension AppModel {
         report["result"] = report["export"]?.hasPrefix("done") == true
             && report["playbackAdvanced"] == "yes" ? "PASS" : "FAIL"
         finish()
+    }
+
+    /// WindowServer's composite of one of our own windows, Metal layer and
+    /// all. `CGWindowListCreateImage` is marked unavailable to Swift on
+    /// macOS 15 (ScreenCaptureKit is the replacement, but it needs the
+    /// Screen Recording grant even for our own windows, which an ad-hoc
+    /// signed harness build never holds); the symbol is still exported, so
+    /// the harness looks it up at runtime. Nil when it is gone.
+    private static func captureOwnWindow(_ window: NSWindow) -> CGImage? {
+        typealias CaptureFunction = @convention(c) (
+            CGRect, UInt32, UInt32, UInt32
+        ) -> Unmanaged<CGImage>?
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage")
+        else { return nil }
+        let capture = unsafeBitCast(symbol, to: CaptureFunction.self)
+        // kCGWindowListOptionIncludingWindow = 1 << 3;
+        // kCGWindowImageBoundsIgnoreFraming = 1 << 0, kCGWindowImageBestResolution = 1 << 3.
+        return capture(.null, 1 << 3, UInt32(window.windowNumber), (1 << 0) | (1 << 3))?
+            .takeRetainedValue()
+    }
+
+    /// Composite the preview surface's pixels (the last frame, rendered
+    /// through the surface's own encode path into an offscreen texture of
+    /// the drawable's size, rounded corners included) over a window
+    /// snapshot at the surface's rect. Nil when there is no editor,
+    /// surface, or frame yet — the caller then keeps the plain snapshot.
+    private static func overlayPreviewFrame(
+        on bitmap: NSBitmapImageRep, contentView: NSView, player: PreviewPlayer?
+    ) -> NSBitmapImageRep? {
+        guard let player,
+            let surface = MetalPreviewNSView.find(in: contentView),
+            let frame = player.snapshotFrame(),
+            let base = bitmap.cgImage
+        else { return nil }
+        // Window base coordinates are bottom-left, like the CG bitmap.
+        let surfaceRect = surface.convert(surface.bounds, to: nil)
+        let contentRect = contentView.convert(contentView.bounds, to: nil)
+        let scale = CGFloat(bitmap.pixelsWide) / max(1, contentView.bounds.width)
+        let target = CGRect(
+            x: (surfaceRect.minX - contentRect.minX) * scale,
+            y: (surfaceRect.minY - contentRect.minY) * scale,
+            width: surfaceRect.width * scale,
+            height: surfaceRect.height * scale)
+        guard let context = CGContext(
+            data: nil, width: bitmap.pixelsWide, height: bitmap.pixelsHigh,
+            bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        context.draw(
+            base,
+            in: CGRect(x: 0, y: 0, width: bitmap.pixelsWide, height: bitmap.pixelsHigh))
+        context.saveGState()
+        let radius = MetalPreviewNSView.cornerRadius * scale
+        context.addPath(CGPath(
+            roundedRect: target, cornerWidth: radius, cornerHeight: radius,
+            transform: nil))
+        context.clip()
+        context.interpolationQuality = .high
+        context.draw(frame, in: target)
+        context.restoreGState()
+        guard let image = context.makeImage() else { return nil }
+        return NSBitmapImageRep(cgImage: image)
+    }
+
+    /// Click the preview surface through `NSWindow.sendEvent` and report
+    /// whether the selected zoom's focal moved: "yes …", "NO …", or
+    /// "skipped-…" when the project has no zoom to aim.
+    private func verifyTapToAim(player: PreviewPlayer) async -> String {
+        guard let zoom = player.edits.zooms.first else { return "skipped-no-zoom" }
+        guard let window = NSApplication.shared.windows.first(where: { $0.isVisible }),
+            let content = window.contentView,
+            let surface = MetalPreviewNSView.find(in: content),
+            surface.bounds.width > 10, surface.bounds.height > 10
+        else { return "skipped-no-surface" }
+        player.selectedZoomID = zoom.id
+        // Off-centre so the new focal cannot coincide with the old one
+        // (view coordinates here are AppKit's bottom-left origin).
+        let local = CGPoint(x: surface.bounds.width * 0.8, y: surface.bounds.height * 0.7)
+        let point = surface.convert(local, to: nil)
+        func event(_ type: NSEvent.EventType) -> NSEvent? {
+            NSEvent.mouseEvent(
+                with: type, location: point, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil,
+                eventNumber: 0, clickCount: 1,
+                pressure: type == .leftMouseDown ? 1 : 0)
+        }
+        guard let down = event(.leftMouseDown), let up = event(.leftMouseUp) else {
+            return "skipped-no-event"
+        }
+        // Diagnostics: which view the window resolves at that point, and
+        // whether the surface's own mouseDown ran.
+        let hitView = content.superview?.hitTest(point) ?? content.hitTest(point)
+        let hitName = hitView.map { String(describing: type(of: $0)) } ?? "nil"
+        let pressesBefore = surface.mouseDownCount
+        window.sendEvent(down)
+        try? await Task.sleep(for: .milliseconds(80))
+        window.sendEvent(up)
+        try? await Task.sleep(for: .seconds(1))
+        let diagnostics =
+            "hit=\(hitName) presses=\(surface.mouseDownCount - pressesBefore)"
+            + " rendered=\(player.hasRenderedFrame)"
+            + " canvas=\(player.latestFrame.map { "\(Int($0.canvasSize.x))x\(Int($0.canvasSize.y))" } ?? "none")"
+            + " surface=\(Int(surface.bounds.width))x\(Int(surface.bounds.height))"
+        guard let after = player.edits.zooms.first(where: { $0.id == zoom.id }) else {
+            return "NO zoom-vanished \(diagnostics)"
+        }
+        let moved = abs(after.focalX - zoom.focalX) > 0.004
+            || abs(after.focalY - zoom.focalY) > 0.004
+        return String(
+            format: "%@ focal %.3f,%.3f -> %.3f,%.3f %@",
+            moved ? "yes" : "NO", zoom.focalX, zoom.focalY, after.focalX, after.focalY,
+            diagnostics)
     }
 
     private func runRecordFlow(

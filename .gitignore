@@ -24,3 +24,6 @@ xcuserdata/
 # Build artifacts
 dist/
 .build-codex/
+
+# Agent worktree bundles (Scripts/make-app.sh dist-agent*)
+dist-agent*/
