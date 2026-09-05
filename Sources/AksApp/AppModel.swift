@@ -1,4 +1,5 @@
 import AppKit
+import AppSupport
 import AVFoundation
 import CaptureCore
 import CoreGraphics
@@ -54,6 +55,23 @@ final class AppModel {
     var warnings: [String] = []
     let micMonitor = MicLevelMonitor()
     let hudPanel = RecordingHUDPanelController()
+    let countdownPanel = CountdownPanelController()
+    let areaPicker = AreaPickerController()
+    let menuBar = MenuBarController()
+    /// User settings. Mutate through `updatePreferences` so every change
+    /// persists and re-registers the global hotkeys.
+    private(set) var preferences = Preferences()
+    private let preferencesStore = PreferencesStore()
+    /// True for AKS_AUTOPILOT_DIR harness launches: no global hotkeys, no
+    /// menu-bar item, a one-second countdown, no mic/camera — nothing that
+    /// could grab the user's keyboard, pop a permission dialog, or sit on
+    /// their screen longer than the flow needs.
+    let isHarnessRun = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_DIR"] != nil
+    /// SwiftUI's openWindow/openSettings actions, captured by ContentView
+    /// so the menu bar and hotkeys can bring windows back after the user
+    /// closed them.
+    @ObservationIgnored var openMainWindowAction: (@MainActor () -> Void)?
+    @ObservationIgnored var openSettingsAction: (@MainActor () -> Void)?
     /// The recording camera's live session (pill self-view).
     var activeCameraSession: AVCaptureSession?
     /// Start-screen camera preview (its own lightweight session).
@@ -66,7 +84,6 @@ final class AppModel {
     var appIcons: [String: NSImage] = [:]
     private var sourcePreviewTask: Task<Void, Never>?
     private var thumbnailFetchTask: Task<Void, Never>?
-    private var mainWindow: NSWindow?
 
     // MARK: Recording state
 
@@ -117,18 +134,227 @@ final class AppModel {
     var projectCards: [ProjectCard] = []
 
     init() {
+        preferences = preferencesStore.load()
+        // Harness launches (AKS_AUTOPILOT_DIR) must never pop a system
+        // permission dialog on the user's screen: leave the microphone
+        // meter and camera off so no AVFoundation access request fires.
+        if isHarnessRun {
+            microphoneEnabled = false
+            cameraEnabled = false
+        }
         refreshDisplays()
         refreshRecents()
         startActivationRefresh()
+        if !isHarnessRun {
+            menuBar.bind(model: self)
+            HotkeyCenter.shared.setHandler { [weak self] action in
+                self?.handleHotkey(action)
+            }
+            HotkeyCenter.shared.apply(preferences)
+        }
     }
 
     // MARK: - Environment
 
-    var recordingsDirectory: URL {
-        let url = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+    static var defaultRecordingsDirectory: URL {
+        FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Aks")
+    }
+
+    /// The folder new recordings land in: the user's choice from Settings
+    /// while it exists, else ~/Movies/Aks (created on demand).
+    var recordingsDirectory: URL {
+        if let path = preferences.recordingsFolderPath {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+                isDirectory.boolValue
+            {
+                return URL(fileURLWithPath: path, isDirectory: true)
+            }
+        }
+        let url = Self.defaultRecordingsDirectory
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    var recordingsDirectoryDisplayPath: String {
+        (recordingsDirectory.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    // MARK: - Preferences
+
+    func updatePreferences(_ transform: (inout Preferences) -> Void) {
+        var updated = preferences
+        transform(&updated)
+        updated = updated.sanitized()
+        guard updated != preferences else { return }
+        preferences = updated
+        preferencesStore.save(updated)
+        if !isHarnessRun {
+            HotkeyCenter.shared.apply(updated)
+        }
+    }
+
+    func setHotkey(_ preset: HotkeyPreset, for action: HotkeyAction) {
+        updatePreferences { $0.assign(preset, to: action) }
+    }
+
+    /// Chords the OS refused to register, for the Settings window.
+    var hotkeyFailures: [HotkeyAction: OSStatus] {
+        isHarnessRun ? [:] : HotkeyCenter.shared.failures
+    }
+
+    func chooseRecordingsFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = recordingsDirectory
+        panel.prompt = "Use This Folder"
+        panel.message = "Choose where new recordings are saved"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        updatePreferences { $0.recordingsFolderPath = url.path }
+        refreshRecents()
+    }
+
+    func resetRecordingsFolder() {
+        updatePreferences { $0.recordingsFolderPath = nil }
+        refreshRecents()
+    }
+
+    // MARK: - Windows
+
+    /// The document window (not the Settings window, not our panels).
+    private func isMainWindow(_ window: NSWindow) -> Bool {
+        !(window is NSPanel) && window.styleMask.contains(.titled)
+            && (window.identifier?.rawValue.hasPrefix("main") == true
+                || window.title == Branding.displayName)
+    }
+
+    var isMainWindowVisible: Bool {
+        NSApplication.shared.windows.contains { isMainWindow($0) && $0.isVisible }
+    }
+
+    func hideMainWindow() {
+        for window in NSApplication.shared.windows where isMainWindow(window) && window.isVisible {
+            window.orderOut(nil)
+        }
+    }
+
+    /// Bring the main window forward, recreating it if the user closed it.
+    func showMainWindow() {
+        if let window = NSApplication.shared.windows.first(where: { isMainWindow($0) }) {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openMainWindowAction?()
+        }
+        NSApplication.shared.activate()
+    }
+
+    func openSettings() {
+        if let openSettingsAction {
+            openSettingsAction()
+        } else {
+            NSApplication.shared.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
+        NSApplication.shared.activate()
+    }
+
+    // MARK: - Menu bar, hotkeys, area picker
+
+    func handleHotkey(_ action: HotkeyAction) {
+        switch action {
+        case .toggleRecording:
+            switch mode {
+            case .recording: stopRecording()
+            case .countdown: skipCountdown()
+            case .start, .editor:
+                if areaPicker.isPresenting { return }
+                startCountdown()
+            }
+        case .togglePause:
+            if case .recording = mode { togglePause() }
+        case .recordArea:
+            if areaPicker.isPresenting {
+                areaPicker.cancel()
+                return
+            }
+            presentAreaPicker(thenRecord: true)
+        }
+    }
+
+    /// Show the on-screen area picker. With `thenRecord` the strip's button
+    /// says Record and a confirmed selection starts the countdown; without
+    /// it (the start screen's "Select on Screen…") the selection only
+    /// fills the area fields.
+    func presentAreaPicker(thenRecord: Bool) {
+        guard !areaPicker.isPresenting else { return }
+        switch mode {
+        case .countdown, .recording: return
+        case .start, .editor: break
+        }
+        guard !displays.isEmpty else {
+            statusMessage = "\(Branding.displayName) needs Screen Recording permission before it can record an area."
+            showMainWindow()
+            return
+        }
+        var initial: AreaSelection?
+        if sourceKind == .area, let displayID = selectedDisplayID {
+            initial = AreaSelection(
+                displayID: displayID,
+                rect: CGRect(x: areaX, y: areaY, width: areaWidth, height: areaHeight))
+        }
+        areaPicker.present(intent: thenRecord ? .record : .useSelection, initial: initial) {
+            [weak self] selection in
+            guard let self else { return }
+            guard let selection else {
+                if !thenRecord { self.showMainWindow() }
+                return
+            }
+            self.apply(selection)
+            if thenRecord {
+                self.startCountdown()
+            } else {
+                self.showMainWindow()
+            }
+        }
+    }
+
+    /// Adopt a picker result as the current source.
+    func apply(_ selection: AreaSelection) {
+        sourceKind = .area
+        if displays.contains(where: { $0.displayID == selection.displayID }) {
+            selectedDisplayID = selection.displayID
+        }
+        areaX = selection.rect.minX
+        areaY = selection.rect.minY
+        areaWidth = selection.rect.width
+        areaHeight = selection.rect.height
+        refreshSources()
+        Task { await refreshSourcePreviewOnce() }
+    }
+
+    /// Menu bar "Record Window…": switch to window capture and bring the
+    /// start screen forward on the window picker.
+    func recordWindowFromMenuBar() {
+        switch mode {
+        case .countdown, .recording: return
+        case .editor: closeEditor()
+        case .start: break
+        }
+        sourceKind = .window
+        refreshSources()
+        showMainWindow()
+    }
+
+    func openProjectFromMenuBar(_ url: URL) {
+        switch mode {
+        case .countdown, .recording: return
+        case .start, .editor: break
+        }
+        openProject(at: url)
+        showMainWindow()
     }
 
     private(set) var hasInputMonitoring = EventTapSource.hasPermission()
@@ -632,14 +858,47 @@ final class AppModel {
 
     private var countdownTask: Task<Void, Never>?
 
+    /// Seconds of countdown for this launch: the user's setting, capped at
+    /// one for harness runs so the panel never lingers on their screen.
+    var effectiveCountdownSeconds: Int {
+        isHarnessRun ? min(1, preferences.countdownSeconds) : preferences.countdownSeconds
+    }
+
+    /// Start recording with the current source/mic/camera settings — from
+    /// the Record button, the menu bar, or the global hotkey. Works from
+    /// the editor too (it closes first); ignored while a countdown or a
+    /// recording is already running.
     func startCountdown() {
-        guard case .start = mode else { return }
+        switch mode {
+        case .countdown, .recording: return
+        case .editor: closeEditor()
+        case .start: break
+        }
+        guard !displays.isEmpty else {
+            statusMessage = "\(Branding.displayName) needs Screen Recording permission before it can record."
+            showMainWindow()
+            return
+        }
         warnings = []
-        mode = .countdown(3)
+        let seconds = effectiveCountdownSeconds
+        guard seconds > 0 else {
+            mode = .countdown(0)
+            countdownTask = Task { await self.beginRecording() }
+            return
+        }
+        mode = .countdown(seconds)
+        // The panel, not the main window, is the countdown the user sees:
+        // it works when the window is hidden (hotkey / menu bar start) and
+        // sits on the display about to be recorded.
+        countdownPanel.show(
+            remaining: seconds, onDisplayID: selectedDisplayID,
+            onStartNow: { [weak self] in self?.skipCountdown() },
+            onCancel: { [weak self] in self?.cancelCountdown() })
         countdownTask = Task {
-            for remaining in stride(from: 3, through: 1, by: -1) {
+            for remaining in stride(from: seconds, through: 1, by: -1) {
                 if Task.isCancelled { return }
                 mode = .countdown(remaining)
+                countdownPanel.update(remaining: remaining)
                 try? await Task.sleep(for: .seconds(1))
             }
             if Task.isCancelled { return }
@@ -647,10 +906,11 @@ final class AppModel {
         }
     }
 
-    /// Click during the countdown: start now.
+    /// Click / Return / the hotkey during the countdown: start now.
     func skipCountdown() {
         guard case .countdown = mode else { return }
         countdownTask?.cancel()
+        countdownPanel.hide()
         Task { await self.beginRecording() }
     }
 
@@ -658,6 +918,7 @@ final class AppModel {
     func cancelCountdown() {
         guard case .countdown = mode else { return }
         countdownTask?.cancel()
+        countdownPanel.hide()
         mode = .start
     }
 
@@ -665,6 +926,8 @@ final class AppModel {
         // Only the countdown path may start capture: ⌘O or any other mode
         // change during the countdown cancels the recording intent.
         guard case .countdown = mode else { return }
+        // The countdown must be gone before the first frame is captured.
+        countdownPanel.hide()
         // The start-screen camera preview must release the device before
         // the recording session opens it.
         stopSourcePreviews()
@@ -672,12 +935,16 @@ final class AppModel {
         guard let display = displays.first(where: { $0.displayID == selectedDisplayID }) else {
             statusMessage = "Select a display first."
             mode = .start
+            showMainWindow()
             return
         }
         let stamp = RFC3339.now().replacingOccurrences(of: ":", with: "-").prefix(19)
         let projectURL = recordingsDirectory.appendingPathComponent("Recording \(stamp).aks")
         guard let configuration = makeConfiguration(display: display) else {
             mode = .start
+            // The reason is in statusMessage; make sure it can be seen
+            // even when the start came from the menu bar or a hotkey.
+            showMainWindow()
             return
         }
         let coordinator = RecordingCoordinator(
@@ -701,20 +968,11 @@ final class AppModel {
             self.totalPausedSeconds = 0
             self.activeCameraSession = (await coordinator.activeCamera())?.captureSession
             self.mode = .recording
-            // Get out of the way: hide the app
-            // window entirely and control the recording from a small
-            // floating pill + the menu-bar item. Floating the main window
-            // (the old behavior) kept it above everything the user was
-            // trying to record.
-            // The app window is titled; the menu-bar item's own borderless
-            // NSWindow must not match, or we hide the wrong window and the
-            // main one keeps covering the recording.
-            self.mainWindow = NSApplication.shared.windows.first {
-                $0.isVisible && !($0 is NSPanel) && $0.styleMask.contains(.titled)
-            } ?? NSApplication.shared.windows.first {
-                !($0 is NSPanel) && $0.styleMask.contains(.titled)
-            }
-            self.mainWindow?.orderOut(nil)
+            // Get out of the way: hide the app window entirely and control
+            // the recording from the floating pill, the menu-bar item, or
+            // the hotkeys. Floating the main window (the old behavior) kept
+            // it above everything the user was trying to record.
+            self.hideMainWindow()
             self.hudPanel.show(model: self, onDisplayID: display.displayID)
         } catch {
             // A permission granted while the app is running only takes
@@ -737,6 +995,7 @@ final class AppModel {
             try? FileManager.default.removeItem(at: projectURL)
             refreshRecents()
             mode = .start
+            showMainWindow()
         }
     }
 
@@ -841,18 +1100,22 @@ final class AppModel {
                 let summary = try await coordinator.stop()
                 self.activeCameraSession = nil
                 self.hudPanel.hide()
-                self.mainWindow?.makeKeyAndOrderFront(nil)
-                NSApplication.shared.activate()
+                self.showMainWindow()
                 if !summary.validation.isHealthy {
                     self.warnings.append("Validation found problems — see aks validate.")
                 }
                 self.refreshRecents()
-                self.openProject(at: summary.projectURL)
+                if self.preferences.openEditorAfterRecording {
+                    self.openProject(at: summary.projectURL)
+                } else {
+                    // Start screen; refreshRecents sorts newest first, so
+                    // the recording just made leads the list.
+                    self.mode = .start
+                }
             } catch {
                 self.activeCameraSession = nil
                 self.hudPanel.hide()
-                self.mainWindow?.makeKeyAndOrderFront(nil)
-                NSApplication.shared.activate()
+                self.showMainWindow()
                 self.statusMessage = "Stop failed: \(error)"
                 self.mode = .start
             }

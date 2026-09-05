@@ -22,7 +22,10 @@ struct AksApplication: App {
     }
 
     var body: some Scene {
-        WindowGroup(Branding.displayName) {
+        // A single document window (not a WindowGroup): the menu bar and
+        // hotkeys reopen it by id after the user closes it, and there is
+        // never a second copy of the start screen.
+        Window(Branding.displayName, id: "main") {
             ContentView()
                 .environment(model)
                 .preferredColorScheme(.dark)
@@ -30,12 +33,6 @@ struct AksApplication: App {
                 // especially, so they can be pasted into a bug report.
                 .textSelection(.enabled)
                 .frame(minWidth: 960, minHeight: 600)
-                .onAppear {
-                    // Bare-executable launches start inactive; front the app
-                    // once the first window exists.
-                    NSApplication.shared.activate()
-                    model.startAutopilotIfRequested()
-                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
@@ -46,21 +43,16 @@ struct AksApplication: App {
             }
         }
 
-        // Menu-bar recording control: stop or pause from any app without
-        // hunting for the HUD window.
-        MenuBarExtra(isInserted: .constant(model.isRecordingMode)) {
-            Text(model.isPaused ? "Paused · \(model.elapsedText)" : "Recording · \(model.elapsedText)")
-            Button(model.isPaused ? "Resume" : "Pause") {
-                model.togglePause()
-            }
-            Button("Stop Recording") {
-                model.stopRecording()
-                NSApplication.shared.activate()
-            }
-            .keyboardShortcut(".", modifiers: [.command, .shift])
-        } label: {
-            Image(systemName: model.isPaused ? "pause.circle.fill" : "record.circle.fill")
+        // ⌘, — menu bar, global shortcuts, countdown, recordings folder.
+        Settings {
+            SettingsView()
+                .environment(model)
+                .preferredColorScheme(.dark)
         }
+
+        // The menu-bar status item is AppKit (MenuBarController), owned by
+        // the model: it exists whenever "Show in menu bar" is on, and
+        // always while recording.
     }
 }
 
@@ -73,17 +65,31 @@ extension AppModel {
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        switch model.mode {
-        case .start:
-            StartView()
-        case .countdown(let remaining):
-            CountdownView(remaining: remaining)
-        case .recording:
-            RecordingHUDView()
-        case .editor(let player):
-            EditorView(player: player)
+        Group {
+            switch model.mode {
+            case .start:
+                StartView()
+            case .countdown(let remaining):
+                CountdownView(remaining: remaining)
+            case .recording:
+                RecordingHUDView()
+            case .editor(let player):
+                EditorView(player: player)
+            }
+        }
+        .onAppear {
+            // Bare-executable launches start inactive; front the app once
+            // the first window exists.
+            NSApplication.shared.activate()
+            // Hand the model a way to reopen this window and Settings from
+            // the menu bar / hotkeys (SwiftUI only exposes these to views).
+            model.openMainWindowAction = { openWindow(id: "main") }
+            model.openSettingsAction = { openSettings() }
+            model.startAutopilotIfRequested()
         }
     }
 }
