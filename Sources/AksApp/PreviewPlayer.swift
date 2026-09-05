@@ -345,6 +345,10 @@ final class PreviewPlayer {
         }
     }
 
+    /// Frames actually rendered since open (perf harness: frames ÷ seconds
+    /// played is the effective preview frame rate).
+    private(set) var renderedFrameCount = 0
+
     /// Render requests coalesce: at most one in flight, latest time wins.
     func requestFrame(at requestNs: Int64) {
         pendingRenderNs = requestNs
@@ -355,6 +359,7 @@ final class PreviewPlayer {
                 self.pendingRenderNs = nil
                 if let frame = await self.box.renderedFrame(at: target) {
                     self.currentFrame = frame.image
+                    self.renderedFrameCount += 1
                 }
             }
             self?.renderInFlight = false
