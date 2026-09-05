@@ -94,7 +94,7 @@ public struct Validator: Sendable {
         var report = ValidationReport(
             projectPath: url.path,
             checkedAt: RFC3339.now(),
-            toolVersion: AksSchema.toolVersion,
+            toolVersion: ProjectSchema.toolVersion,
             manifestGeneration: nil,
             state: nil,
             journalRecordCount: 0,
@@ -144,7 +144,7 @@ public struct Validator: Sendable {
             issues.append(ValidationIssue(
                 severity, code: "journal.torn",
                 message: "journal trusted prefix ends at line \(journal.truncatedAtLine ?? 0): \(reason). "
-                    + "Run `aks recover` to rebuild from committed data."))
+                    + "Run `screenreel recover` to rebuild from committed data."))
         }
 
         // Incomplete session marker.
@@ -158,7 +158,7 @@ public struct Validator: Sendable {
                 issues.append(ValidationIssue(
                     .warning, code: "session.incomplete",
                     message: "session.lock present and writer is gone — the session did not close cleanly. "
-                        + "Run `aks recover` to produce a recovered copy."))
+                        + "Run `screenreel recover` to produce a recovered copy."))
             }
         } else if manifest.state == .recording {
             issues.append(ValidationIssue(
@@ -215,7 +215,7 @@ public struct Validator: Sendable {
                 issues.append(ValidationIssue(
                     .error, code: "segment.openedNotCommitted",
                     message: "segment was opened but never committed in a session that stopped cleanly — "
-                        + "its media was lost or is stranded in a .partial; run `aks recover`",
+                        + "its media was lost or is stranded in a .partial; run `screenreel recover`",
                     path: path))
             }
         }
@@ -253,7 +253,7 @@ public struct Validator: Sendable {
                 issues.append(ValidationIssue(
                     .error, code: "chunk.unsupportedCompression",
                     message: "chunk uses zstd compression, which this build does not support yet; "
-                        + "use a newer Aks to read it (ADR 0003)",
+                        + "use a newer Screenreel to read it (ADR 0003)",
                     path: path))
                 continue
             }
@@ -318,7 +318,7 @@ public struct Validator: Sendable {
         for orphan in report.orphanCandidates {
             issues.append(ValidationIssue(
                 .warning, code: "asset.orphan",
-                message: "finalized file on disk has no journal record; `aks recover --attach-orphans` can attach it after inspection",
+                message: "finalized file on disk has no journal record; `screenreel recover --attach-orphans` can attach it after inspection",
                 path: orphan))
         }
         for partial in report.partialTails {
@@ -418,7 +418,7 @@ public struct Validator: Sendable {
                 message += ". The ratio exceeds \(Int(TrackTimeScale.absurdThreshold))× — the "
                     + "measurement itself is suspect, so automatic healing is refused"
             } else if anomaly.isHealable {
-                message += ". `aks recover` can rewrite the time mapping "
+                message += ". `screenreel recover` can rewrite the time mapping "
                     + "(metadata only; raw media is never touched)"
             } else {
                 message += ". The references disagree with each other, so recovery "

@@ -11,7 +11,7 @@ final class EditDocumentTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-edits-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-edits-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         try? FileManager.default.createDirectory(
             at: layout.editsDirectory, withIntermediateDirectories: true)
@@ -85,7 +85,7 @@ final class EditDocumentTests: XCTestCase {
         let encoder = JSONEncoder()
         try encoder.encode(document).write(to: EditDocument.url(in: layout))
         XCTAssertThrowsError(try EditDocument.load(from: layout)) { error in
-            guard case AksError.schemaTooNew(let found, _, _) = error else {
+            guard case ScreenreelError.schemaTooNew(let found, _, _) = error else {
                 return XCTFail("expected schemaTooNew, got \(error)")
             }
             XCTAssertEqual(found, 99)

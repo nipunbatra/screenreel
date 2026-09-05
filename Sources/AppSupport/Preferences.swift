@@ -13,7 +13,7 @@ public struct Preferences: Equatable, Sendable {
     /// start screen with it listed first (false).
     public var openEditorAfterRecording: Bool = true
     /// Absolute path of the recordings folder; nil = the default
-    /// (~/Movies/Aks). The app falls back to the default when the folder
+    /// (~/Movies/Screenreel). The app falls back to the default when the folder
     /// no longer exists.
     public var recordingsFolderPath: String? = nil
     public var hotkeys: [HotkeyAction: HotkeyPreset] = Preferences.defaultHotkeys

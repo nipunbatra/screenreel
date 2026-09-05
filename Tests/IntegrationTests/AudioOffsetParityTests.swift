@@ -21,7 +21,7 @@ final class AudioOffsetParityTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-offsetparity-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-offsetparity-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -104,7 +104,7 @@ final class AudioOffsetParityTests: XCTestCase {
     /// Full synthetic session (screen + events for the composition) whose
     /// microphone starts 2 s late.
     private func makeLateMicProject(durationNs: Int64) async throws -> URL {
-        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).aks")
+        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

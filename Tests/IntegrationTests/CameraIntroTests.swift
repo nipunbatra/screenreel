@@ -14,7 +14,7 @@ final class CameraIntroTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-intro-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-intro-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
     }

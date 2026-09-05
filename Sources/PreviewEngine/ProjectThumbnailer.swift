@@ -50,7 +50,7 @@ public enum ProjectThumbnailer {
 
     /// Render (or load the cached) thumbnail. Any failure — unreadable
     /// project, damaged journal, undecodable media — returns nil rather than
-    /// throwing: the browser shows a placeholder and `aks validate` explains.
+    /// throwing: the browser shows a placeholder and `screenreel validate` explains.
     public static func thumbnail(for projectURL: URL, height: Int = 180) async -> CGImage? {
         let cache = cacheURL(for: projectURL, height: height)
         if let cached = loadPNG(at: cache) {

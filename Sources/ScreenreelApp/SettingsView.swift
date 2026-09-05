@@ -69,7 +69,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Text("New recordings are saved here as recoverable .aks packages. If the folder disappears, \(Branding.displayName) falls back to ~/Movies/Aks.")
+                Text("New recordings are saved here as recoverable .screenreel packages. If the folder disappears, \(Branding.displayName) falls back to ~/Movies/Screenreel.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

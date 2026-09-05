@@ -19,7 +19,7 @@ final class CameraAndOffsetTests: XCTestCase {
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-camoffset-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-camoffset-\(UUID().uuidString)")
     }
 
     override func tearDown() {
@@ -28,7 +28,7 @@ final class CameraAndOffsetTests: XCTestCase {
     }
 
     func testCameraTrackComposesIntoPreviewFrames() async throws {
-        let projectURL = root.appendingPathComponent("cam.aks")
+        let projectURL = root.appendingPathComponent("cam.screenreel")
         let durationNs: Int64 = 4_000_000_000
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
@@ -81,7 +81,7 @@ final class CameraAndOffsetTests: XCTestCase {
     }
 
     func testEventOffsetsShiftCursorEventsIntoSourcePixels() async throws {
-        let projectURL = root.appendingPathComponent("area.aks")
+        let projectURL = root.appendingPathComponent("area.screenreel")
         // Area capture: source starts at display pixel (40, 20).
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,
@@ -127,7 +127,7 @@ final class CameraAndOffsetTests: XCTestCase {
     }
 
     func testCaptureConfigurationPersistsSourceFieldsInManifest() async throws {
-        let projectURL = root.appendingPathComponent("fields.aks")
+        let projectURL = root.appendingPathComponent("fields.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 3,

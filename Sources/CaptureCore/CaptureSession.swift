@@ -302,7 +302,7 @@ public actor CaptureSession {
 
     public func stop() async throws -> StopSummary {
         guard layout != nil, manifestStore != nil, journal != nil else {
-            throw AksError.invariantViolated("stop() before start()")
+            throw ScreenreelError.invariantViolated("stop() before start()")
         }
         // A finished stop is safely repeatable: the disk-full self-stop may
         // have completed before the operator's own stop arrives.
@@ -315,7 +315,7 @@ public actor CaptureSession {
 
     private func performStop() async throws -> StopSummary {
         guard let layout, let manifestStore, let journal else {
-            throw AksError.invariantViolated("stop() before start()")
+            throw ScreenreelError.invariantViolated("stop() before start()")
         }
         if let finishedSummary { return finishedSummary }
         stopping = true
@@ -436,7 +436,7 @@ public actor CaptureSession {
         // starts: a late cursor chunk would follow `sessionFinalized` and
         // make a cleanly stopped project look damaged.
         guard !stopping else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "event chunk commit refused: the session is stopping")
         }
         // The journal assigns commitSequence inside its own actor so the

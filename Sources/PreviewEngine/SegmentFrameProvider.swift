@@ -137,7 +137,7 @@ public final class SegmentFrameProvider {
         let asset = AVURLAsset(url: entry.url)
         let newReader = try AVAssetReader(asset: asset)
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-            throw AksError.invariantViolated("\(entry.descriptor.path): no video track")
+            throw ScreenreelError.invariantViolated("\(entry.descriptor.path): no video track")
         }
         var outputSettings: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
@@ -182,7 +182,7 @@ public final class SegmentFrameProvider {
             }
         }
         guard newReader.startReading() else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "\(entry.descriptor.path): decode failed: \(newReader.error.map { "\($0)" } ?? "unknown")")
         }
         reader = newReader
@@ -194,7 +194,7 @@ public final class SegmentFrameProvider {
         guard let output, let openIndex else { return nil }
         guard let sample = output.copyNextSampleBuffer() else {
             if reader?.status == .failed {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "decode failed: \(reader?.error.map { "\($0)" } ?? "unknown")")
             }
             return nil

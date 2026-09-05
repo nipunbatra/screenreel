@@ -12,14 +12,14 @@ import XCTest
 ///   prints "export fps: N" so perf regressions are visible in CI logs.
 ///
 /// Run the long gate explicitly (it renders that many minutes of video):
-///   AKS_LONG_EXPORT_MINUTES=30 swift test --filter LongExportGateTests
+///   SCREENREEL_LONG_EXPORT_MINUTES=30 swift test --filter LongExportGateTests
 final class LongExportGateTests: XCTestCase {
     private var directory: URL!
 
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-longexport-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-longexport-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -35,10 +35,10 @@ final class LongExportGateTests: XCTestCase {
     }
 
     func testLongStyledExportGate() async throws {
-        guard let minutesText = ProcessInfo.processInfo.environment["AKS_LONG_EXPORT_MINUTES"],
+        guard let minutesText = ProcessInfo.processInfo.environment["SCREENREEL_LONG_EXPORT_MINUTES"],
             let minutes = Int(minutesText), minutes > 0
         else {
-            throw XCTSkip("set AKS_LONG_EXPORT_MINUTES=30 to run the long styled-export gate")
+            throw XCTSkip("set SCREENREEL_LONG_EXPORT_MINUTES=30 to run the long styled-export gate")
         }
         let durationNs = Int64(minutes) * 60_000_000_000
         // pace 4 (the factory default) keeps generation fast without

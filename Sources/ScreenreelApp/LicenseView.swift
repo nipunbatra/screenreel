@@ -238,7 +238,7 @@ final class LicenseSheetController {
 }
 
 /// Menu items for the app menu: license entry plus the update check. Added
-/// from `AksApp.swift` via `CommandGroup(after: .appInfo)`.
+/// from `ScreenreelApp.swift` via `CommandGroup(after: .appInfo)`.
 struct DistributionCommands: View {
     @AppStorage(UpdateChecker.automaticKey) private var automaticUpdates = true
 

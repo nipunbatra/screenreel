@@ -22,14 +22,14 @@ Xcode 26.3, Swift 6.2) is the baseline and chose a macOS 15 minimum.
 2. **One SwiftPM package at the repository root with many small targets**, not
    separate repositories or a monolithic app target. Targets follow the module
    map in `CLAUDE.md` (`ProjectModel`, `CaptureCore`, `EventCapture`,
-   `Diagnostics`, `AksCLI`, plus stub targets for `TimelineCore`,
+   `Diagnostics`, `ScreenreelCLI`, plus stub targets for `TimelineCore`,
    `MotionEngine`, `AudioPipeline`, `RenderGraph`, `PreviewEngine`,
    `ExportEngine`). Only app/preview targets may import SwiftUI.
 3. **Swift 6 language mode** with strict concurrency. Long-lived media state is
    owned by actors; sample-buffer paths never hop through `@MainActor`.
 4. **External dependencies are limited to `apple/swift-argument-parser`** (CLI
    only) in Milestone 0. Hashing uses CryptoKit; no third-party crypto.
-5. **`aks` (the CLI) is the first executable product.** The SwiftUI shell comes
+5. **`screenreel` (the CLI) is the first executable product.** The SwiftUI shell comes
    after the durable recorder passes its gates, per the roadmap. During
    development the CLI records real sessions using the Screen Recording
    permission of the invoking terminal.

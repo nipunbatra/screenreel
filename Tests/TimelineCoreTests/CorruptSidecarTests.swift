@@ -15,7 +15,7 @@ final class CorruptSidecarTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-corrupt-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-corrupt-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         try? FileManager.default.createDirectory(
             at: layout.editsDirectory, withIntermediateDirectories: true)
@@ -64,7 +64,7 @@ final class CorruptSidecarTests: XCTestCase {
         try JSONEncoder().encode(document).write(to: EditDocument.url(in: layout))
 
         XCTAssertThrowsError(try EditDocument.load(from: layout)) { error in
-            guard case AksError.schemaTooNew = error else {
+            guard case ScreenreelError.schemaTooNew = error else {
                 return XCTFail("expected schemaTooNew, got \(error)")
             }
         }

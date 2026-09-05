@@ -16,7 +16,7 @@ final class GIFExportTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-gif-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-gif-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
     }

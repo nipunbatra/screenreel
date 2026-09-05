@@ -31,7 +31,7 @@ public protocol AudioEnhancing: Sendable {
 public struct UnimplementedAudioEnhancer: AudioEnhancing {
     public init() {}
     public func enhance(_ request: EnhancementRequest) async throws -> URL {
-        throw AksError.invariantViolated(
+        throw ScreenreelError.invariantViolated(
             "Audio enhancement is not implemented in Milestone 0 (see docs/ROADMAP.md Milestone 2)")
     }
 }

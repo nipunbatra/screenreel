@@ -5,7 +5,7 @@ import Foundation
 import ProjectModel
 import Synchronization
 
-/// Marker sources and the measurement core behind `aks selftest`
+/// Marker sources and the measurement core behind `screenreel selftest`
 ///:
 /// a synthetic screen source flashes WHITE for a few consecutive frames at
 /// known capture times, a synthetic mic beeps at the same times; both are
@@ -77,7 +77,7 @@ enum SyncSelftest {
         await mic.waitUntilFinished()
         let summary = try await session.stop()
         guard summary.validation.isHealthy else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "selftest recording did not validate: \(summary.validation.issues)")
         }
         return markers
@@ -119,7 +119,7 @@ enum SyncSelftest {
         let screenSegments = segments(of: .screen)
         let micSegments = segments(of: .microphone)
         guard !screenSegments.isEmpty, !micSegments.isEmpty else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "selftest project needs committed screen and microphone segments "
                     + "(found \(screenSegments.count) screen, \(micSegments.count) mic)")
         }
@@ -140,7 +140,7 @@ enum SyncSelftest {
             }
         }
         guard pairs.count >= 3 else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "selftest needs at least 3 flash/beep pairs to measure sync; "
                     + "found \(flashOnsetsNs.count) flashes, \(beepOnsetsNs.count) beeps, "
                     + "\(pairs.count) pairs")
@@ -202,7 +202,7 @@ enum SyncSelftest {
             let asset = AVURLAsset(
                 url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
             guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-                throw AksError.invariantViolated("\(segment.path): no video track")
+                throw ScreenreelError.invariantViolated("\(segment.path): no video track")
             }
             let reader = try AVAssetReader(asset: asset)
             let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
@@ -210,7 +210,7 @@ enum SyncSelftest {
             ])
             reader.add(output)
             guard reader.startReading() else {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "\(segment.path): reader failed: \(reader.error.map { "\($0)" } ?? "unknown")")
             }
             var frames: [(ptsNs: Int64, luma: Double)] = []
@@ -222,7 +222,7 @@ enum SyncSelftest {
                 frames.append((Int64((pts.seconds * 1e9).rounded()), meanLuma(of: buffer)))
             }
             if reader.status == .failed {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "\(segment.path): read failed: \(reader.error.map { "\($0)" } ?? "unknown")")
             }
             frames.sort { $0.ptsNs < $1.ptsNs }

@@ -89,14 +89,14 @@ public enum CheckpointedExporter {
     ) async throws -> Result {
         let fm = FileManager.default
         if fm.fileExists(atPath: outputURL.path), !options.overwrite {
-            throw AksError.ioFailed(
+            throw ScreenreelError.ioFailed(
                 operation: "export", path: outputURL.path, errno: EEXIST)
         }
 
         let activity = SystemActivity(.export, reason: "Checkpointed export")
         defer { activity.end() }
         guard options.fps > 0, options.fps.rounded() == options.fps else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "checkpointed export requires an integer fps (got \(options.fps))")
         }
 
@@ -105,7 +105,7 @@ public enum CheckpointedExporter {
         let range = composition.trimmedRange
         let rangeDurationNs = range.endNs - range.startNs
         guard rangeDurationNs > 0 else {
-            throw AksError.invariantViolated("trimmed range is empty")
+            throw ScreenreelError.invariantViolated("trimmed range is empty")
         }
         // EXACTLY StyledExporter's frame-count formula, so segment sums
         // always reconcile with a single-file export of the same range.
@@ -204,10 +204,10 @@ public enum CheckpointedExporter {
                 // by sha on every resume and wedge the job permanently at
                 // the reconciliation guard.
                 try? fm.removeItem(at: segmentURL)
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "segment \(index) rendered \(result.videoFrames) of "
                         + "\(expectedFrames) frames — a source segment in this "
-                        + "range decodes no samples; run `aks validate` on the "
+                        + "range decodes no samples; run `screenreel validate` on the "
                         + "project")
             }
 
@@ -226,7 +226,7 @@ public enum CheckpointedExporter {
         guard checkpoint.segments.count == segmentCount,
             segmentFrameSum == totalFrames
         else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "segment reconciliation failed: \(checkpoint.segments.count)/\(segmentCount) "
                     + "segments, \(segmentFrameSum)/\(totalFrames) frames")
         }
@@ -270,7 +270,7 @@ public enum CheckpointedExporter {
             withMediaType: .video).first,
             let format = try await firstTrack.load(.formatDescriptions).first
         else {
-            throw AksError.invariantViolated("segment 0 has no video track")
+            throw ScreenreelError.invariantViolated("segment 0 has no video track")
         }
 
         let writer = try AVAssetWriter(outputURL: partialURL, fileType: .mp4)
@@ -299,7 +299,7 @@ public enum CheckpointedExporter {
         }
 
         guard writer.startWriting() else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "assembly writer failed to start: \(writer.error.map { "\($0)" } ?? "unknown")")
         }
         writer.startSession(atSourceTime: .zero)
@@ -339,7 +339,7 @@ public enum CheckpointedExporter {
                 guard let track = try await asset.loadTracks(
                     withMediaType: .video).first
                 else {
-                    throw AksError.invariantViolated(
+                    throw ScreenreelError.invariantViolated(
                         "\(segment.fileName) has no video track")
                 }
                 let reader = try AVAssetReader(asset: asset)
@@ -348,7 +348,7 @@ public enum CheckpointedExporter {
                 output.alwaysCopiesSampleData = false
                 reader.add(output)
                 guard reader.startReading() else {
-                    throw AksError.invariantViolated(
+                    throw ScreenreelError.invariantViolated(
                         "cannot read \(segment.fileName): \(reader.error.map { "\($0)" } ?? "unknown")")
                 }
                 let shiftNs = segmentOffsetNs(
@@ -356,20 +356,20 @@ public enum CheckpointedExporter {
                 while let sample = output.copyNextSampleBuffer() {
                     while !videoInput.isReadyForMoreMediaData {
                         if writer.status == .failed {
-                            throw AksError.invariantViolated(
+                            throw ScreenreelError.invariantViolated(
                                 "assembly writer failed: \(writer.error.map { "\($0)" } ?? "unknown")")
                         }
                         try await Task.sleep(nanoseconds: 2_000_000)
                     }
                     let shifted = try SegmentAssembler.retimed(sample, byNs: shiftNs)
                     guard videoInput.append(shifted) else {
-                        throw AksError.invariantViolated(
+                        throw ScreenreelError.invariantViolated(
                             "assembly append failed: \(writer.error.map { "\($0)" } ?? "unknown")")
                     }
                     appendedSamples += CMSampleBufferGetNumSamples(sample)
                 }
                 if reader.status == .failed {
-                    throw AksError.invariantViolated(
+                    throw ScreenreelError.invariantViolated(
                         "reading \(segment.fileName) failed: \(reader.error.map { "\($0)" } ?? "unknown")")
                 }
             }
@@ -393,7 +393,7 @@ public enum CheckpointedExporter {
         await writer.finishWriting()
         guard writer.status == .completed else {
             try? fm.removeItem(at: partialURL)
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "assembly finalize failed: \(writer.error.map { "\($0)" } ?? "unknown")")
         }
 
@@ -401,12 +401,12 @@ public enum CheckpointedExporter {
         let probe = await CaptureCoreInspector().probe(url: partialURL)
         guard probe.decodable, probe.issues.isEmpty else {
             try? fm.removeItem(at: partialURL)
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "assembled file failed validation: \(probe.issues.joined(separator: "; "))")
         }
         if let count = probe.frameCount, count != appendedSamples {
             try? fm.removeItem(at: partialURL)
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "assembled file has \(count) frames, expected \(appendedSamples)")
         }
         if options.overwrite {
@@ -474,7 +474,7 @@ public enum CheckpointedExporter {
             Double(free) > needed
         else {
             let freeBytes = values?.volumeAvailableCapacityForImportantUsage ?? 0
-            throw AksError.ioFailed(
+            throw ScreenreelError.ioFailed(
                 operation: "export needs ~\(Int(needed) >> 20) MB free, has \(Int(freeBytes) >> 20) MB — "
                     + "committed segments are preserved; free space and re-run to resume",
                 path: jobDirectory.path, errno: ENOSPC)

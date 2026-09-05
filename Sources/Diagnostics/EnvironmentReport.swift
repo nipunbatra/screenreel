@@ -22,7 +22,7 @@ public struct EnvironmentReport: Codable, Sendable {
         }
         return EnvironmentReport(
             generatedAt: RFC3339.now(),
-            toolVersion: AksSchema.toolVersion,
+            toolVersion: ProjectSchema.toolVersion,
             osVersion: process.operatingSystemVersionString,
             hardwareModel: sysctlString("hw.model") ?? "unknown",
             cpuBrand: sysctlString("machdep.cpu.brand_string") ?? "unknown",

@@ -18,6 +18,6 @@ public enum FileCloner {
             try fm.copyItem(at: source, to: destination)
             return
         }
-        throw AksError.ioFailed(operation: "clonefile", path: destination.path, errno: errno)
+        throw ScreenreelError.ioFailed(operation: "clonefile", path: destination.path, errno: errno)
     }
 }

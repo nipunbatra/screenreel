@@ -414,7 +414,7 @@ struct StartView: View {
                 ContentUnavailableView(
                     "No recordings yet",
                     systemImage: "film.stack",
-                    description: Text("Recordings land in ~/Movies/\(Branding.displayName) as recoverable .aks packages."))
+                    description: Text("Recordings land in ~/Movies/\(Branding.displayName) as recoverable .screenreel packages."))
                 Spacer()
             } else {
                 ScrollView {

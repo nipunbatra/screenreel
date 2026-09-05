@@ -13,7 +13,7 @@ final class QuickInfoTests: XCTestCase {
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-quickinfo-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-quickinfo-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
@@ -23,7 +23,7 @@ final class QuickInfoTests: XCTestCase {
     }
 
     func testReadsDurationAndStateFromManifestOnly() throws {
-        let projectURL = root.appendingPathComponent("p.aks")
+        let projectURL = root.appendingPathComponent("p.screenreel")
         let layout = ProjectLayout(root: projectURL)
         try FileManager.default.createDirectory(
             at: projectURL, withIntermediateDirectories: true)
@@ -43,14 +43,14 @@ final class QuickInfoTests: XCTestCase {
     }
 
     func testMissingManifestYieldsNil() {
-        let projectURL = root.appendingPathComponent("empty.aks")
+        let projectURL = root.appendingPathComponent("empty.screenreel")
         try? FileManager.default.createDirectory(
             at: projectURL, withIntermediateDirectories: true)
         XCTAssertNil(ProjectQuickInfo.read(at: projectURL))
     }
 
     func testCorruptManifestYieldsNilNotCrash() throws {
-        let projectURL = root.appendingPathComponent("bad.aks")
+        let projectURL = root.appendingPathComponent("bad.screenreel")
         let layout = ProjectLayout(root: projectURL)
         try FileManager.default.createDirectory(
             at: projectURL, withIntermediateDirectories: true)

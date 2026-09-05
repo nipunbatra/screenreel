@@ -3,7 +3,7 @@ import XCTest
 @testable import CaptureCore
 @testable import ProjectModel
 
-/// SIGKILLs a real `aks record --synthetic` child process at randomized
+/// SIGKILLs a real `screenreel record --synthetic` child process at randomized
 /// moments, then recovers and validates — the automated core of the forced
 /// termination matrix (ACCEPTANCE §2). The manual matrix for real capture is
 /// documented in docs/MANUAL_TESTS.md.
@@ -13,7 +13,7 @@ final class ForcedQuitTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-kill-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-kill-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +22,7 @@ final class ForcedQuitTests: XCTestCase {
         super.tearDown()
     }
 
-    /// The build products directory containing the `aks` executable.
+    /// The build products directory containing the `screenreel` executable.
     private static var productsDirectory: URL {
         for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
             return bundle.bundleURL.deletingLastPathComponent()
@@ -31,15 +31,15 @@ final class ForcedQuitTests: XCTestCase {
     }
 
     func testKillDuringRecordingIsAlwaysRecoverable() async throws {
-        let iterations = Int(ProcessInfo.processInfo.environment["AKS_KILL_ITERATIONS"] ?? "3") ?? 3
-        let binary = Self.productsDirectory.appendingPathComponent("aks")
+        let iterations = Int(ProcessInfo.processInfo.environment["SCREENREEL_KILL_ITERATIONS"] ?? "3") ?? 3
+        let binary = Self.productsDirectory.appendingPathComponent("screenreel")
         guard FileManager.default.fileExists(atPath: binary.path) else {
-            throw XCTSkip("aks executable not built next to the test bundle")
+            throw XCTSkip("screenreel executable not built next to the test bundle")
         }
 
         var generator = SystemRandomNumberGenerator()
         for iteration in 0..<iterations {
-            let projectURL = directory.appendingPathComponent("kill-\(iteration).aks")
+            let projectURL = directory.appendingPathComponent("kill-\(iteration).screenreel")
             let process = Process()
             process.executableURL = binary
             process.arguments = [
@@ -78,7 +78,7 @@ final class ForcedQuitTests: XCTestCase {
             // media; the original is untouched.
             let journalBefore = try Data(
                 contentsOf: ProjectLayout(root: projectURL).journalURL)
-            let recoveredURL = directory.appendingPathComponent("recovered-\(iteration).aks")
+            let recoveredURL = directory.appendingPathComponent("recovered-\(iteration).screenreel")
             let report = try await Recovery.recover(
                 projectAt: projectURL,
                 options: RecoveryOptions(
@@ -119,11 +119,11 @@ extension ForcedQuitTests {
     /// (~the 4 s boundary) — the moment a finalize chain, a fresh writer,
     /// and journal commits are all in flight at once.
     func testKillTimedAtSegmentRollIsRecoverable() async throws {
-        let binary = Self.productsDirectory.appendingPathComponent("aks")
+        let binary = Self.productsDirectory.appendingPathComponent("screenreel")
         guard FileManager.default.fileExists(atPath: binary.path) else {
-            throw XCTSkip("aks executable not built next to the test bundle")
+            throw XCTSkip("screenreel executable not built next to the test bundle")
         }
-        let projectURL = directory.appendingPathComponent("kill-at-roll.aks")
+        let projectURL = directory.appendingPathComponent("kill-at-roll.screenreel")
         let process = Process()
         process.executableURL = binary
         process.arguments = [

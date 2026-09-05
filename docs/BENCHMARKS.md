@@ -2,13 +2,13 @@
 
 Method and numbers behind the published claims. All measurements on the
 development machine (Apple silicon MacBook Pro, macOS 15, release build of
-the `aks` CLI), 2026-08-25, against a real 26.53 s lecture recording at
+the `screenreel` CLI), 2026-08-25, against a real 26.53 s lecture recording at
 5120×2880 (5K Retina display capture, 30 fps, mic + system audio).
 
 ## Styled export (full pipeline: decode → compose → HEVC encode → mux)
 
 ```text
-/usr/bin/time -l aks export <project> out.mp4 --styled --force
+/usr/bin/time -l screenreel export <project> out.mp4 --styled --force
   14.6 s wall for 26.53 s of content  →  1.8× real time
   73 MB maximum resident set size
   795/795 frames validated by probe after mux
@@ -17,14 +17,14 @@ the `aks` CLI), 2026-08-25, against a real 26.53 s lecture recording at
 ## Leaks
 
 ```text
-leaks --atExit -- aks export <project> out.mp4 --styled --force
+leaks --atExit -- screenreel export <project> out.mp4 --styled --force
   Process …: 0 leaks for 0 total leaked bytes.
 ```
 
 ## Animated GIF export (same graph, palette container)
 
 ```text
-aks export <project> out.gif --force
+screenreel export <project> out.gif --force
   530 frames at 960×540 (20 fps), 7.1 MB, 6.9 s wall  →  3.8× real time
 ```
 

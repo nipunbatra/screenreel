@@ -2,7 +2,7 @@
 
 ## 1. Outcome
 
-Aks lets a lecturer or technical creator record once, edit quickly, and reliably export a readable 4K video with clear speech, a legible cursor, and restrained automatic zooms. A 45-minute lecture should feel as safe as saving a document: the raw work survives a crash and rendering can resume.
+Screenreel lets a lecturer or technical creator record once, edit quickly, and reliably export a readable 4K video with clear speech, a legible cursor, and restrained automatic zooms. A 45-minute lecture should feel as safe as saving a document: the raw work survives a crash and rendering can resume.
 
 ## 2. Primary users
 
@@ -131,4 +131,4 @@ The lecturer is the v0.1 priority. Short-form polish must not weaken long-form r
 - A one-hour 4K30 lecture exports at >=0.5× real time on the target Apple Silicon baseline and can resume after a forced quit.
 - Cursor alignment error <1 output pixel for deterministic fixtures at 100% scale and <2 pixels under zoom.
 - A/V end-time drift <20 ms per hour; start offset is explicit and editable.
-- User can locate and open every raw track without Aks.
+- User can locate and open every raw track without Screenreel.

@@ -19,7 +19,7 @@ final class CaptureCoreRobustnessTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-capture-robustness-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-capture-robustness-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         for url in layout.initialDirectories {
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -48,7 +48,7 @@ final class CaptureCoreRobustnessTests: XCTestCase {
         do {
             try await writer.finish()
             XCTFail("zero-frame CAF segment unexpectedly committed")
-        } catch let error as AksError {
+        } catch let error as ScreenreelError {
             guard case .invariantViolated = error else {
                 return XCTFail("expected invariantViolated, got \(error)")
             }

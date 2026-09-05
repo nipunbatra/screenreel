@@ -29,7 +29,7 @@ App Nap and lets idle sleep proceed.
    average/maximum callback latency, and re-enable count. At stop the
    session writes `diagnostics/perf-summary.json` (interval-weighted
    digest plus the final counters) and returns it in `StopSummary.perf`.
-   `aks perf` reads both; the app keeps the digest and turns concerns
+   `screenreel perf` reads both; the app keeps the digest and turns concerns
    (drops, tap stalls, thermal throttling, CPU saturation) into warnings.
 2. Counters read by the trace are lock-free mirrors (`Atomic`) so the
    trace never queues behind an append on the writer actor.

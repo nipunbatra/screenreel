@@ -424,7 +424,7 @@ public struct EditDocument: Codable, Sendable, Equatable {
         trimStartNs: Int64? = nil,
         trimEndNs: Int64? = nil
     ) {
-        self.schemaVersion = AksSchema.currentVersion
+        self.schemaVersion = ProjectSchema.currentVersion
         self.style = style
         self.cursor = cursor
         self.camera = camera
@@ -486,12 +486,12 @@ public struct EditDocument: Codable, Sendable, Equatable {
             CorruptSidecar.preserve(url)
             throw error
         }
-        guard document.schemaVersion <= AksSchema.currentVersion else {
+        guard document.schemaVersion <= ProjectSchema.currentVersion else {
             // A valid document from a newer build is data, not corruption:
             // it stays exactly where it is for that newer build to read.
-            throw AksError.schemaTooNew(
+            throw ScreenreelError.schemaTooNew(
                 found: document.schemaVersion,
-                supported: AksSchema.currentVersion,
+                supported: ProjectSchema.currentVersion,
                 path: url.path)
         }
         return document

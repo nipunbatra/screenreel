@@ -9,7 +9,7 @@ final class AtomicFileAndStoreTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-atomic-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-atomic-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -76,7 +76,7 @@ final class AtomicFileAndStoreTests: XCTestCase {
         let encoder = JSONEncoder()
         let data = try encoder.encode(manifest)
         XCTAssertThrowsError(try Manifest.decode(from: data, path: "test")) { error in
-            guard case AksError.schemaTooNew(let found, _, _) = error else {
+            guard case ScreenreelError.schemaTooNew(let found, _, _) = error else {
                 return XCTFail("expected schemaTooNew, got \(error)")
             }
             XCTAssertEqual(found, 99)

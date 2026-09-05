@@ -17,7 +17,7 @@ final class EditBehaviorTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-editbehavior-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-editbehavior-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         projectURL = try await SyntheticProjectFactory.make(
             in: directory, durationNs: 8_000_000_000)

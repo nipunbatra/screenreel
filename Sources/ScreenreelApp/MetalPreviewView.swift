@@ -52,7 +52,7 @@ final class MetalPreviewRenderer: @unchecked Sendable {
     /// the corners are painted into the drawable.
     private let cornerRadius: CGFloat
     private let onPresented: @Sendable (Int64) -> Void
-    private let queue = DispatchQueue(label: "in.aks.preview.render", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "com.nipunbatra.screenreel.preview.render", qos: .userInteractive)
     private let lock = NSLock()
     private var pending: ComposedFrame?
     private var last: ComposedFrame?

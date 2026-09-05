@@ -12,7 +12,7 @@ final class AspectAndThumbnailTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-aspect-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-aspect-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -99,7 +99,7 @@ final class AspectAndThumbnailTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
 
         // A directory that is not a project at all.
-        let notAProject = directory.appendingPathComponent("not-a-project.aks")
+        let notAProject = directory.appendingPathComponent("not-a-project.screenreel")
         try FileManager.default.createDirectory(at: notAProject, withIntermediateDirectories: true)
         let none = await ProjectThumbnailer.thumbnail(for: notAProject, height: 120)
         XCTAssertNil(none)

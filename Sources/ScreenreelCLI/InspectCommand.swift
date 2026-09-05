@@ -6,7 +6,7 @@ struct Inspect: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Print a project's manifest summary and journal contents.")
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Flag(help: "Dump every trusted journal record.")

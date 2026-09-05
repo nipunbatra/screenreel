@@ -4,7 +4,7 @@ import Licensing
 /// What this running binary knows about itself: the marketing version
 /// (`CFBundleShortVersionString`, stamped from the repo's `VERSION` file by
 /// `Scripts/make-app.sh`) and the build date (`SRBuildDate`, stamped by the
-/// same script). A bare `swift run AksApp` has no Info.plist, so both fall
+/// same script). A bare `swift run ScreenreelApp` has no Info.plist, so both fall
 /// back to values that make the update check and license window honest
 /// rather than silently "current".
 enum AppBuildInfo {

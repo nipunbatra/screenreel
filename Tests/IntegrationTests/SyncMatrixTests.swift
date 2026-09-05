@@ -14,7 +14,7 @@ import XCTest
 /// The tolerance is deliberately loose: the bug class this guards against
 /// (stretched or collapsed timelines) produces errors of a second or more.
 ///
-/// Set AKS_SYNC_REPORT=/path/to/report.json to write a JSON report of every
+/// Set SCREENREEL_SYNC_REPORT=/path/to/report.json to write a JSON report of every
 /// executed case.
 final class SyncMatrixTests: XCTestCase {
     private var directory: URL!
@@ -22,7 +22,7 @@ final class SyncMatrixTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-syncmatrix-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-syncmatrix-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -120,7 +120,7 @@ final class SyncMatrixTests: XCTestCase {
     }
 
     private func capture(_ matrixCase: MatrixCase, attempt: Int) async throws -> CaseOutcome {
-        let projectURL = directory.appendingPathComponent("\(matrixCase.name)-\(attempt).aks")
+        let projectURL = directory.appendingPathComponent("\(matrixCase.name)-\(attempt).screenreel")
         let stereo = matrixCase.channels == 2
         // The mic writer is mono and the system-audio writer is stereo by
         // design, so channel count selects which real audio path is driven.
@@ -359,7 +359,7 @@ final class SyncMatrixTests: XCTestCase {
 }
 
 /// Accumulates per-case results across the suite and rewrites the JSON report
-/// at the `AKS_SYNC_REPORT` path after every case, so the file is complete
+/// at the `SCREENREEL_SYNC_REPORT` path after every case, so the file is complete
 /// for whatever subset of cases actually ran.
 final class SyncMatrixReport: @unchecked Sendable {
     static let shared = SyncMatrixReport()
@@ -367,7 +367,7 @@ final class SyncMatrixReport: @unchecked Sendable {
     private var cases: [JSONValue] = []
 
     func record(_ fields: [String: JSONValue]) {
-        guard let path = ProcessInfo.processInfo.environment["AKS_SYNC_REPORT"],
+        guard let path = ProcessInfo.processInfo.environment["SCREENREEL_SYNC_REPORT"],
             !path.isEmpty
         else { return }
         lock.lock()

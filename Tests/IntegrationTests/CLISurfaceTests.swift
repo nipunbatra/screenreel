@@ -13,7 +13,7 @@ final class CLISurfaceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-clisurface-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-clisurface-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -26,14 +26,14 @@ final class CLISurfaceTests: XCTestCase {
 
     private static var binary: URL {
         for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
-            return bundle.bundleURL.deletingLastPathComponent().appendingPathComponent("aks")
+            return bundle.bundleURL.deletingLastPathComponent().appendingPathComponent("screenreel")
         }
         fatalError("cannot locate build products directory")
     }
 
     private func requireBinary() throws {
         guard FileManager.default.fileExists(atPath: Self.binary.path) else {
-            throw XCTSkip("aks binary not built next to the test bundle")
+            throw XCTSkip("screenreel binary not built next to the test bundle")
         }
     }
 
@@ -85,7 +85,7 @@ final class CLISurfaceTests: XCTestCase {
     }
 
     private func recordFixture(name: String, seconds: Int) throws -> String {
-        let project = directory.appendingPathComponent("\(name).aks").path
+        let project = directory.appendingPathComponent("\(name).screenreel").path
         let record = try run([
             "record", "--synthetic", "--duration", "\(seconds)", "--pace", "4",
             "--width", "320", "--height", "180", "--output", project,
@@ -103,7 +103,7 @@ final class CLISurfaceTests: XCTestCase {
 
     // MARK: - Help matrix
 
-    /// Every subcommand enumerated from `aks --help` answers `--help` with
+    /// Every subcommand enumerated from `screenreel --help` answers `--help` with
     /// exit 0 and a usage block; the enumeration itself must contain the
     /// full known command surface so removals are caught.
     func testEverySubcommandHelpSucceeds() throws {
@@ -136,7 +136,7 @@ final class CLISurfaceTests: XCTestCase {
         ]
         XCTAssertEqual(
             Set(subcommands), expected,
-            "aks --help no longer lists the pinned command surface: \(subcommands)")
+            "screenreel --help no longer lists the pinned command surface: \(subcommands)")
 
         for subcommand in subcommands {
             let help = try run([subcommand, "--help"])
@@ -155,7 +155,7 @@ final class CLISurfaceTests: XCTestCase {
     /// Swift crash to stderr.
     func testCorruptProjectProducesStructuredErrors() throws {
         try requireBinary()
-        let corrupt = directory.appendingPathComponent("mangled.aks")
+        let corrupt = directory.appendingPathComponent("mangled.screenreel")
         try FileManager.default.createDirectory(at: corrupt, withIntermediateDirectories: true)
         try Data("{ not json ]]".utf8).write(
             to: corrupt.appendingPathComponent("manifest.json"))
@@ -163,23 +163,23 @@ final class CLISurfaceTests: XCTestCase {
         let validate = try run(["validate", corrupt.path])
         XCTAssertEqual(validate.status, 1, "pinned failure exit code")
         XCTAssertTrue(
-            (validate.stdout + validate.stderr).contains("mangled.aks"),
+            (validate.stdout + validate.stderr).contains("mangled.screenreel"),
             "validate error must name the path: \(validate.stdout)\n\(validate.stderr)")
         assertNoStackTrace(validate.stderr, "validate corrupt")
 
         let inspect = try run(["inspect", corrupt.path])
         XCTAssertEqual(inspect.status, 1, "pinned failure exit code")
         XCTAssertTrue(
-            (inspect.stdout + inspect.stderr).contains("mangled.aks"),
+            (inspect.stdout + inspect.stderr).contains("mangled.screenreel"),
             "inspect error must name the path: \(inspect.stdout)\n\(inspect.stderr)")
         assertNoStackTrace(inspect.stderr, "inspect corrupt")
 
         // A path that is not a project at all gets the same contract.
-        let missing = directory.appendingPathComponent("nothing.aks").path
+        let missing = directory.appendingPathComponent("nothing.screenreel").path
         let ghost = try run(["inspect", missing])
         XCTAssertEqual(ghost.status, 1)
         XCTAssertTrue(
-            (ghost.stdout + ghost.stderr).contains("nothing.aks"),
+            (ghost.stdout + ghost.stderr).contains("nothing.screenreel"),
             ghost.stdout + ghost.stderr)
         assertNoStackTrace(ghost.stderr, "inspect missing")
     }
@@ -206,7 +206,7 @@ final class CLISurfaceTests: XCTestCase {
             "inspect --json must emit a JSON object")
         XCTAssertNotNil(inspectJSON["manifest"], "\(inspectJSON.keys)")
 
-        let recovered = directory.appendingPathComponent("roundtrip-recovered.aks").path
+        let recovered = directory.appendingPathComponent("roundtrip-recovered.screenreel").path
         let recover = try run(["recover", project, "--output", recovered, "--json"])
         XCTAssertEqual(recover.status, 0, recover.stdout + recover.stderr)
         XCTAssertNotNil(

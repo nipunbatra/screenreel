@@ -48,8 +48,8 @@ public final class ProjectComposition: @unchecked Sendable {
         self.projectURL = projectURL
         let loaded = try ProjectPackage.load(at: projectURL)
         if let reason = loaded.journal.truncationReason {
-            throw AksError.journalInvalid(
-                reason: "journal is damaged (\(reason)); run `aks recover` first",
+            throw ScreenreelError.journalInvalid(
+                reason: "journal is damaged (\(reason)); run `screenreel recover` first",
                 atLine: loaded.journal.truncatedAtLine ?? 0)
         }
         self.layout = loaded.layout
@@ -80,7 +80,7 @@ public final class ProjectComposition: @unchecked Sendable {
         self.micSegments = mediaSegments(.microphone)
         self.systemSegments = mediaSegments(.systemAudio)
         guard !screenSegments.isEmpty else {
-            throw AksError.invariantViolated("project has no committed screen segments")
+            throw ScreenreelError.invariantViolated("project has no committed screen segments")
         }
         self.frameProvider = try SegmentFrameProvider(
             segments: screenSegments, layout: layout,
@@ -381,7 +381,7 @@ public final class ProjectComposition: @unchecked Sendable {
         }
     }
 
-    /// Original Aks arrow drawn with CoreGraphics (no external assets).
+    /// Original Screenreel arrow drawn with CoreGraphics (no external assets).
     private static func makeVectorArrow() -> CursorAsset? {
         let size = 64
         guard let context = CGContext(

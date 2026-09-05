@@ -9,7 +9,7 @@ final class RobustnessTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-robustness-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-robustness-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -144,14 +144,14 @@ final class RobustnessTests: XCTestCase {
     // MARK: - Recovery
 
     func testRecoveryIsIdempotentAndPreservesRawBytes() async throws {
-        let originalURL = directory.appendingPathComponent("crashed.aks")
+        let originalURL = directory.appendingPathComponent("crashed.screenreel")
         try await TestProject.build(at: originalURL, finalize: false)
         let originalRaw = try rawAssets(in: originalURL)
 
-        let firstURL = directory.appendingPathComponent("RECOVERED-1.aks")
+        let firstURL = directory.appendingPathComponent("RECOVERED-1.screenreel")
         _ = try await Recovery.recover(
             projectAt: originalURL, options: RecoveryOptions(destination: firstURL))
-        let secondURL = directory.appendingPathComponent("RECOVERED-2.aks")
+        let secondURL = directory.appendingPathComponent("RECOVERED-2.screenreel")
         _ = try await Recovery.recover(
             projectAt: firstURL, options: RecoveryOptions(destination: secondURL))
 
@@ -163,11 +163,11 @@ final class RobustnessTests: XCTestCase {
     }
 
     func testRecoverySucceedsWhenEventsDirectoryIsMissing() async throws {
-        let originalURL = directory.appendingPathComponent("no-events.aks")
+        let originalURL = directory.appendingPathComponent("no-events.screenreel")
         let built = try await TestProject.build(at: originalURL, finalize: false)
         try FileManager.default.removeItem(at: built.layout.eventsDirectory)
 
-        let recoveredURL = directory.appendingPathComponent("no-events-recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("no-events-recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: originalURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.recoveredChunks, 0)
@@ -178,7 +178,7 @@ final class RobustnessTests: XCTestCase {
     }
 
     func testRecoverySkipsCorruptNewestHistoryAndUsesValidOlderManifest() async throws {
-        let originalURL = directory.appendingPathComponent("history.aks")
+        let originalURL = directory.appendingPathComponent("history.screenreel")
         let built = try await TestProject.build(at: originalURL, finalize: false)
         let original = try ProjectPackage.load(at: originalURL).manifest
         let history = try FileManager.default.contentsOfDirectory(
@@ -190,7 +190,7 @@ final class RobustnessTests: XCTestCase {
         try Data("{\"corrupt\":true}".utf8).write(to: history.last!)
         try Data("torn main manifest".utf8).write(to: built.layout.manifestURL)
 
-        let recoveredURL = directory.appendingPathComponent("history-recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("history-recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: originalURL, options: RecoveryOptions(destination: recoveredURL))
         let recovered = try ProjectPackage.load(at: recoveredURL)
@@ -205,9 +205,9 @@ final class RobustnessTests: XCTestCase {
     // MARK: - Validator hostile inputs
 
     func testValidatorTurnsValidJSONWithWrongTypesIntoErrorReport() async throws {
-        let projectURL = directory.appendingPathComponent("wrong-types.aks")
+        let projectURL = directory.appendingPathComponent("wrong-types.screenreel")
         let built = try await TestProject.build(at: projectURL)
-        let wrongTypes = #"{"format":"in.aks.project","schemaVersion":"1","projectID":7,"tracks":{},"generation":false}"#
+        let wrongTypes = #"{"format":"com.nipunbatra.screenreel.project","schemaVersion":"1","projectID":7,"tracks":{},"generation":false}"#
         try Data(wrongTypes.utf8).write(to: built.layout.manifestURL)
 
         let report = await Validator().validate(projectAt: projectURL)
@@ -218,7 +218,7 @@ final class RobustnessTests: XCTestCase {
     }
 
     func testValidatorRejectsDuplicateTraversalAndExtremeByteSizesWithoutEscapingPackage() async throws {
-        let projectURL = directory.appendingPathComponent("hostile.aks")
+        let projectURL = directory.appendingPathComponent("hostile.screenreel")
         let built = try await TestProject.build(at: projectURL, finalize: false)
         var manifest = try ProjectPackage.load(at: projectURL).manifest
         let screenIndex = try XCTUnwrap(manifest.tracks.firstIndex { $0.id == built.screenTrackID })
@@ -303,7 +303,7 @@ final class RobustnessTests: XCTestCase {
     }
 
     func testValidatorRejectsBackwardSequenceInsideCorrectlyCountedEventChunk() async throws {
-        let projectURL = directory.appendingPathComponent("backward-events.aks")
+        let projectURL = directory.appendingPathComponent("backward-events.screenreel")
         let built = try await TestProject.build(at: projectURL, finalize: false)
         var manifest = try ProjectPackage.load(at: projectURL).manifest
         let eventTrack = try XCTUnwrap(manifest.tracks.first { $0.type == .cursorEvents })

@@ -17,7 +17,7 @@ struct Record: AsyncParsableCommand {
             Monitoring permission.
             """)
 
-    @Option(help: "Project package to create (default: './Recording <timestamp>.aks').")
+    @Option(help: "Project package to create (default: './Recording <timestamp>.screenreel').")
     var output: String?
 
     @Flag(help: "Use deterministic synthetic sources instead of real capture.")
@@ -35,7 +35,7 @@ struct Record: AsyncParsableCommand {
     @Option(help: "Nominal frame rate.")
     var fps: Double = 30
 
-    @Option(help: "Display ID to record (see 'aks env').")
+    @Option(help: "Display ID to record (see 'screenreel env').")
     var display: Int?
 
     @Flag(help: "Also record keystrokes for the shortcut overlay (OFF by default: keystrokes can include passwords).")
@@ -61,7 +61,7 @@ struct Record: AsyncParsableCommand {
 
     func run() async throws {
         let stamp = RFC3339.now().replacingOccurrences(of: ":", with: "-").prefix(19)
-        let projectPath = output ?? "./Recording \(stamp).aks"
+        let projectPath = output ?? "./Recording \(stamp).screenreel"
         let url = projectURL(from: projectPath)
         guard codec == "hevc" || codec == "h264" else {
             throw ValidationError("--codec must be hevc or h264")

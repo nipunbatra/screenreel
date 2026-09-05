@@ -3,7 +3,7 @@ import XCTest
 @testable import Diagnostics
 
 /// The encoder capability probe must pass on a healthy machine: mid-gray in,
-/// mid-gray out, every frame accounted for. This is the check `aks diagnose`
+/// mid-gray out, every frame accounted for. This is the check `screenreel diagnose`
 /// runs so "the encoder produces black frames" surfaces before a recording.
 final class EncoderProbeTests: XCTestCase {
 

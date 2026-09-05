@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aks.in/schemas/event-record-v1.schema.json",
-  "title": "Aks input event record v1 (one JSON object per line of an event chunk)",
+  "$id": "https://screenreel.in/schemas/event-record-v1.schema.json",
+  "title": "Screenreel input event record v1 (one JSON object per line of an event chunk)",
   "type": "object",
   "required": ["schemaVersion", "sequence", "timeNs", "type"],
   "properties": {

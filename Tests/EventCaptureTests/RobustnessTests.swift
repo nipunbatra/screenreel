@@ -19,7 +19,7 @@ final class EventCaptureRobustnessTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-event-stress-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-event-stress-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         for url in layout.initialDirectories {
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

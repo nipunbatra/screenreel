@@ -2,12 +2,12 @@ import ArgumentParser
 import Foundation
 
 @main
-struct Aks: AsyncParsableCommand {
+struct Screenreel: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "aks",
-        abstract: "Aks — recovery-first macOS screen recorder (Milestone 0 tools).",
+        commandName: "screenreel",
+        abstract: "Screenreel — recovery-first macOS screen recorder (Milestone 0 tools).",
         discussion: """
-            A .aks project is an open package: raw media under raw/, input events
+            A .screenreel project is an open package: raw media under raw/, input events
             under events/, a hash-chained journal, and an atomically-replaced
             manifest. These commands validate, recover, extract, inspect, and
             record such packages. See docs/PROJECT_FORMAT.md.

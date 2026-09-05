@@ -5,7 +5,7 @@ import Foundation
 import ProjectModel
 
 /// Env-gated self-test for the frictionless-start surfaces that need no
-/// Screen Recording permission: when `AKS_UX_SELFTEST_DIR` is set, the app
+/// Screen Recording permission: when `SCREENREEL_UX_SELFTEST_DIR` is set, the app
 /// drives its own menu bar item, global hotkey registration, countdown
 /// panel, and area-picker overlay through synthesized events, snapshots
 /// the overlay to PNG, writes a machine-readable report, and quits.
@@ -16,7 +16,7 @@ import ProjectModel
 extension AppModel {
 
     func startUXSelfTestIfRequested() {
-        guard let directoryPath = ProcessInfo.processInfo.environment["AKS_UX_SELFTEST_DIR"],
+        guard let directoryPath = ProcessInfo.processInfo.environment["SCREENREEL_UX_SELFTEST_DIR"],
             !uxSelfTestStarted
         else { return }
         uxSelfTestStarted = true

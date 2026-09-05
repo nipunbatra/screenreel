@@ -12,8 +12,8 @@ final class RedactionTests: XCTestCase {
 
     func testHomeDirectoryBecomesTilde() {
         XCTAssertEqual(
-            Redaction.redact("/Users/alice/git/aks/Project.aks"),
-            "~/git/aks/Project.aks")
+            Redaction.redact("/Users/alice/git/screenreel/Project.screenreel"),
+            "~/git/screenreel/Project.screenreel")
         XCTAssertEqual(Redaction.redact("/Users/alice"), "~")
         // Any user, every occurrence, mid-sentence.
         XCTAssertEqual(
@@ -21,8 +21,8 @@ final class RedactionTests: XCTestCase {
             "copied ~/a.mov over ~/b.mov")
         // Non-home paths survive untouched.
         XCTAssertEqual(
-            Redaction.redact("/tmp/aks/raw/screen/display-1-000001.mov"),
-            "/tmp/aks/raw/screen/display-1-000001.mov")
+            Redaction.redact("/tmp/screenreel/raw/screen/display-1-000001.mov"),
+            "/tmp/screenreel/raw/screen/display-1-000001.mov")
     }
 
     func testURLQueryValuesAreElidedButKeysSurvive() {
@@ -40,7 +40,7 @@ final class RedactionTests: XCTestCase {
 
     func testHomeInsideURLQueryIsDoublyRedacted() {
         XCTAssertEqual(
-            Redaction.redact("app://open?path=/Users/alice/Movies/demo.aks"),
+            Redaction.redact("app://open?path=/Users/alice/Movies/demo.screenreel"),
             "app://open?path=…")
     }
 
@@ -48,7 +48,7 @@ final class RedactionTests: XCTestCase {
 
     func testNestedLeavesRedactedAndNonStringsUntouched() throws {
         let value = JSONValue.object([
-            "path": .string("/Users/alice/Movies/p.aks"),
+            "path": .string("/Users/alice/Movies/p.screenreel"),
             "count": .integer(3),
             "ratio": .double(1.5),
             "ok": .bool(true),
@@ -59,7 +59,7 @@ final class RedactionTests: XCTestCase {
             ]),
         ])
         let redacted = Redaction.redact(value)
-        XCTAssertEqual(redacted["path"]?.stringValue, "~/Movies/p.aks")
+        XCTAssertEqual(redacted["path"]?.stringValue, "~/Movies/p.screenreel")
         XCTAssertEqual(redacted["count"]?.integerValue, 3)
         XCTAssertEqual(redacted["ratio"]?.doubleValue, 1.5)
         XCTAssertEqual(redacted["ok"], .bool(true))
@@ -80,16 +80,16 @@ final class RedactionTests: XCTestCase {
 
     func testTypedReportRoundTripsThroughRedaction() throws {
         let report = SampleReport(
-            projectPath: "/Users/alice/Movies/demo.aks",
-            recentPaths: ["/Users/alice/a.aks", "/tmp/b.aks"],
+            projectPath: "/Users/alice/Movies/demo.screenreel",
+            recentPaths: ["/Users/alice/a.screenreel", "/tmp/b.screenreel"],
             byName: ["upload": "https://api.test/u?sig=deadbeef"],
             count: 2)
         let redacted = try Redaction.redact(report)
         XCTAssertEqual(
             redacted,
             SampleReport(
-                projectPath: "~/Movies/demo.aks",
-                recentPaths: ["~/a.aks", "/tmp/b.aks"],
+                projectPath: "~/Movies/demo.screenreel",
+                recentPaths: ["~/a.screenreel", "/tmp/b.screenreel"],
                 byName: ["upload": "https://api.test/u?sig=…"],
                 count: 2))
         // The redacted report is still valid JSON and decodes back to the
@@ -110,14 +110,14 @@ final class RedactionTests: XCTestCase {
 
     func testCorruptLogEntryIsSkippedNotFatal() throws {
         let log = """
-            {"event":"open","path":"/Users/alice/p.aks"}
+            {"event":"open","path":"/Users/alice/p.screenreel"}
             {torn garbage that never finished writ
             {"event":"upload","url":"https://api.test/u?token=abc"}
             """
         let redacted = Redaction.redactJSONLines(log)
         let lines = redacted.split(separator: "\n")
         XCTAssertEqual(lines.count, 2, redacted)
-        XCTAssertTrue(lines[0].contains("~/p.aks"), redacted)
+        XCTAssertTrue(lines[0].contains("~/p.screenreel"), redacted)
         XCTAssertFalse(redacted.contains("nipun"), redacted)
         XCTAssertTrue(lines[1].contains("token=…"), redacted)
         XCTAssertFalse(redacted.contains("abc"), redacted)

@@ -2,18 +2,18 @@
 
 **An open-source, Mac-native recording studio: automatic zooms, cuts, captions, and camera scenes — computed on your Mac, on top of a recorder that never loses a take.**
 
-Screenreel pairs studio-grade visual polish with a fully local, open workflow, built on a render pipeline that finishes a 30–90 minute 4K lecture without losing its audio, cursor, or project state. The app installs as **Screenreel.app**; the project format (`.aks`) and bundle identifier keep their original historical identifiers so existing projects and permission grants stay valid. Everything here is a fresh implementation — original code, original artwork.
+Screenreel pairs studio-grade visual polish with a fully local, open workflow, built on a render pipeline that finishes a 30–90 minute 4K lecture without losing its audio, cursor, or project state. The app installs as **Screenreel.app** (bundle id `com.nipunbatra.screenreel`) and records `.screenreel` packages; packages made by the earlier builds, when the project was called *aks* (`.aks`, format id `in.aks.project`), open unchanged, and the recordings folder migrates from `~/Movies/Aks` to `~/Movies/Screenreel` on first launch. Everything here is a fresh implementation — original code, original artwork.
 
 ## Product promise
 
 1. **Safe before stylish.** Screen, microphone, system audio, camera, cursor events, clicks, and metadata are persisted as separate recoverable assets while recording.
 2. **Polish stays editable.** Cursor smoothing, click effects, zooms, backgrounds, padding, corners, shadows, masks, and captions are non-destructive project data.
 3. **Fast preview, dependable export.** Editing uses proxies and reduced effects. Final export is deterministic, hardware accelerated, checkpointed, cancellable, and resumable.
-4. **The project is open.** A project is a documented folder/package. Even if Aks will not launch, the raw media can be opened with ordinary tools.
+4. **The project is open.** A project is a documented folder/package. Even if Screenreel will not launch, the raw media can be opened with ordinary tools.
 
 ## First release
 
-Aks v0.1 is Mac-first and local-first:
+Screenreel v0.1 is Mac-first and local-first:
 
 - record a display, window, or area with microphone and system audio;
 - capture cursor shape, hotspot, movement, clicks, and optional keyboard events separately;
@@ -63,7 +63,7 @@ Automatically* is on (the default), at most once every 24 hours. It carries
 no identifiers beyond a `User-Agent` of `Screenreel/<version>`; GitHub sees
 your IP address as with any web request. Turn it off in the app menu (stored
 as `updates.automatic` in the app's preferences). Nothing else in the app or
-the `aks` CLI opens a connection.
+the `screenreel` CLI opens a connection.
 
 ## Download and distribution
 
@@ -111,26 +111,26 @@ stream copy at ~20× real time).
 
 ```bash
 swift build -c release
-.build/release/aks env                       # environment + capturable displays
-.build/release/aks record                    # real capture until Ctrl-C
-.build/release/aks record --synthetic --duration 30 --pace 1   # no permissions needed
-.build/release/aks export    <project.aks>            # raw assembly to MP4
-.build/release/aks export    <project.aks> --styled   # edits rendered in
-.build/release/aks validate  <project.aks>   # checksums, journal chain, decode probes
-.build/release/aks recover   <project.aks>   # crash recovery to a fresh copy
-.build/release/aks extract   <project.aks> <dir>   # raw media + events.csv/json
-.build/release/aks inspect   <project.aks> --journal
-.build/release/aks perf      <project.aks> --trace   # CPU/system load/drops per second
+.build/release/screenreel env                       # environment + capturable displays
+.build/release/screenreel record                    # real capture until Ctrl-C
+.build/release/screenreel record --synthetic --duration 30 --pace 1   # no permissions needed
+.build/release/screenreel export    <project.screenreel>            # raw assembly to MP4
+.build/release/screenreel export    <project.screenreel> --styled   # edits rendered in
+.build/release/screenreel validate  <project.screenreel>   # checksums, journal chain, decode probes
+.build/release/screenreel recover   <project.screenreel>   # crash recovery to a fresh copy
+.build/release/screenreel extract   <project.screenreel> <dir>   # raw media + events.csv/json
+.build/release/screenreel inspect   <project.screenreel> --journal
+.build/release/screenreel perf      <project.screenreel> --trace   # CPU/system load/drops per second
 ```
 
-If a recording felt laggy, `aks perf` answers why from the project itself:
+If a recording felt laggy, `screenreel perf` answers why from the project itself:
 every session keeps a per-second trace of the app's CPU next to the whole
 machine's, plus frame drops and cursor-tap latency (`diagnostics/perf.jsonl`).
 
-A recording is a `.aks` package: 4-second finalized HEVC/H.264 `.mov` screen
+A recording is a `.screenreel` package: 4-second finalized HEVC/H.264 `.mov` screen
 segments, torn-tail-safe PCM `.caf` audio segments, JSONL cursor/click chunks,
 a hash-chained write-ahead journal, and an atomically replaced manifest.
-`kill -9` at any moment loses at most the open segments; `aks recover` rebuilds
+`kill -9` at any moment loses at most the open segments; `screenreel recover` rebuilds
 a valid project from committed data and never touches the original. Edits live
 in `edits/timeline.json`; raw media is never modified.
 
@@ -139,7 +139,7 @@ fuzzing, recovery idempotency, deterministic spring/zoom fixtures
 (seek == play-through), pixel-level composer checks, and export validation
 including non-silence audio verification. Measured performance for the
 styled pipeline is recorded in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
-`AKS_RUN_LONG_TESTS=1 swift test --filter TenMinuteGateTests` runs the
+`SCREENREEL_RUN_LONG_TESTS=1 swift test --filter TenMinuteGateTests` runs the
 ten-minute 4K30 capture-integrity gate (passing), and
 [`docs/MANUAL_TESTS.md`](docs/MANUAL_TESTS.md) covers real-capture procedures.
 Since then: on-device captions with an editable transcript (SRT/VTT exact

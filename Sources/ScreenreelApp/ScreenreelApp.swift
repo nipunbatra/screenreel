@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct AksApplication: App {
+struct ScreenreelApplication: App {
     @State private var model = AppModel()
 
     init() {
@@ -18,17 +18,17 @@ struct AksApplication: App {
         // -ApplePersistenceIgnoreState YES; the app has one fixed-layout
         // window, so losing frame restoration costs nothing.
         UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
-        // Running as a bare SwiftPM executable (swift run AksApp): become a
+        // Running as a bare SwiftPM executable (swift run ScreenreelApp): become a
         // regular, activatable app with a Dock icon and key windows.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()
         UpdateChecker.shared.scheduleAutomaticCheck()  // at most once per 24 h; see UpdateCheck.swift
-        if let debugPath = ProcessInfo.processInfo.environment["AKS_DEBUG_WINDOWS_FILE"] {
+        if let debugPath = ProcessInfo.processInfo.environment["SCREENREEL_DEBUG_WINDOWS_FILE"] {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 let windows = NSApplication.shared.windows.map {
                     "\($0.title) visible=\($0.isVisible) frame=\($0.frame)"
                 }
-                try? "AKS_DEBUG windows: \(windows)\n"
+                try? "SCREENREEL_DEBUG windows: \(windows)\n"
                     .write(toFile: debugPath, atomically: true, encoding: .utf8)
             }
         }

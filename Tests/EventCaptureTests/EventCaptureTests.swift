@@ -16,7 +16,7 @@ final class EventCaptureTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-events-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-events-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         for dir in layout.initialDirectories {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -108,7 +108,7 @@ final class EventCaptureTests: XCTestCase {
             maxRecordsPerChunk: 5,
             onCommit: { chunk in
                 if failOnce.shouldFail() {
-                    throw AksError.invariantViolated("simulated journal failure")
+                    throw ScreenreelError.invariantViolated("simulated journal failure")
                 }
                 await collector.note(chunk)
             })

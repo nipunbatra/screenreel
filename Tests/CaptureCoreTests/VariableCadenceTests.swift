@@ -18,8 +18,8 @@ final class VariableCadenceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-vfr-\(UUID().uuidString)")
-        layout = ProjectLayout(root: root.appendingPathComponent("p.aks"))
+            .appendingPathComponent("screenreel-vfr-\(UUID().uuidString)")
+        layout = ProjectLayout(root: root.appendingPathComponent("p.screenreel"))
         for directory in layout.initialDirectories {
             try? FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)

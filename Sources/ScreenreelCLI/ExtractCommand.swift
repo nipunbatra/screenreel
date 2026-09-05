@@ -11,7 +11,7 @@ struct Extract: AsyncParsableCommand {
             tools (QuickTime, ffprobe, ffmpeg) can open every extracted file.
             """)
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Argument(help: "Destination directory for the extracted assets.")

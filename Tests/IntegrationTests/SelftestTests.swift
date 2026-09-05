@@ -1,9 +1,9 @@
 import XCTest
 
-@testable import AksCLI
+@testable import ScreenreelCLI
 @testable import ProjectModel
 
-/// In-process run of the `aks selftest` measurement core: record a 10 s flash/beep marker session through the real
+/// In-process run of the `screenreel selftest` measurement core: record a 10 s flash/beep marker session through the real
 /// pipeline, decode it back, and assert the measured A/V numbers meet the
 /// selftest's own shipping thresholds.
 final class SelftestTests: XCTestCase {
@@ -12,7 +12,7 @@ final class SelftestTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-selftest-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-selftest-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +22,7 @@ final class SelftestTests: XCTestCase {
     }
 
     func testTenSecondMarkerRunMeetsSyncThresholds() async throws {
-        let projectURL = directory.appendingPathComponent("selftest.aks")
+        let projectURL = directory.appendingPathComponent("selftest.screenreel")
         // pace 4 compresses the wall clock; marker timestamps live on the
         // session clock, so the measured sync numbers are pace-independent.
         let markers = try await SyncSelftest.record(

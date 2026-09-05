@@ -1,6 +1,6 @@
-# Claude/Fable implementation contract for Aks
+# Claude/Fable implementation contract for Screenreel
 
-Build Aks from the specifications in `README.md` and `docs/`. These documents are normative. If a convenient shortcut conflicts with a safety invariant, the invariant wins.
+Build Screenreel from the specifications in `README.md` and `docs/`. These documents are normative. If a convenient shortcut conflicts with a safety invariant, the invariant wins.
 
 ## Non-negotiable invariants
 
@@ -39,7 +39,7 @@ Do not begin editor styling until the Milestone 0 gates in `docs/ACCEPTANCE_TEST
 ## Suggested modules
 
 ```text
-AksApp              SwiftUI/AppKit windows, permissions, commands
+ScreenreelApp              SwiftUI/AppKit windows, permissions, commands
 CaptureCore         ScreenCaptureKit coordination and shared clocks
 ProjectModel        schemas, atomic persistence, validation, migration
 EventCapture        cursor/click/keyboard events and cursor descriptors
@@ -50,7 +50,7 @@ RenderGraph         deterministic composition graph
 PreviewEngine       Metal-backed interactive evaluation
 ExportEngine        segmented/checkpointed VideoToolbox encode and mux
 Diagnostics         logs, environment report, project/media validation
-AksCLI              validate, recover, render, inspect
+ScreenreelCLI              validate, recover, render, inspect
 ```
 
 ## Definition of done

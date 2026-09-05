@@ -4,7 +4,7 @@ import CoreMedia
 import Foundation
 import ProjectModel
 
-/// Assembles a `.aks` project's committed raw segments into one playable MP4:
+/// Assembles a `.screenreel` project's committed raw segments into one playable MP4:
 /// video is stream-copied (no re-encode, no generation loss), audio tracks
 /// are mixed in float and AAC-encoded, and gaps become explicit silence
 /// (`docs/AUDIO_PIPELINE.md` §8).
@@ -76,7 +76,7 @@ public enum SegmentAssembler {
         var warnings: [String] = []
         let fm = FileManager.default
         if fm.fileExists(atPath: outputURL.path), !options.overwrite {
-            throw AksError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
+            throw ScreenreelError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
         }
 
         let activity = SystemActivity(.export, reason: "Raw export")
@@ -85,12 +85,12 @@ public enum SegmentAssembler {
         // in validation and recovery.
         let loaded = try ProjectPackage.load(at: projectURL)
         if let reason = loaded.journal.truncationReason {
-            throw AksError.journalInvalid(
-                reason: "journal is damaged (\(reason)); run `aks recover` and export the recovered copy",
+            throw ScreenreelError.journalInvalid(
+                reason: "journal is damaged (\(reason)); run `screenreel recover` and export the recovered copy",
                 atLine: loaded.journal.truncatedAtLine ?? 0)
         }
         if let lock = loaded.sessionLock {
-            throw AksError.sessionActive(path: projectURL.path, pid: lock.pid)
+            throw ScreenreelError.sessionActive(path: projectURL.path, pid: lock.pid)
         }
         let layout = loaded.layout
 
@@ -108,7 +108,7 @@ public enum SegmentAssembler {
         }
         let videoSegments = track(.screen)
         guard !videoSegments.isEmpty else {
-            throw AksError.invariantViolated("project has no committed screen segments to export")
+            throw ScreenreelError.invariantViolated("project has no committed screen segments to export")
         }
         let micSegments = track(.microphone)
         let systemSegments = track(.systemAudio)
@@ -130,7 +130,7 @@ public enum SegmentAssembler {
         // Video: passthrough input with the first segment's format as hint.
         let firstSegmentURL = try layout.resolve(relativePath: videoSegments[0].path)
         guard let formatHint = try await videoFormatDescription(of: firstSegmentURL) else {
-            throw AksError.invariantViolated("cannot read video format from \(videoSegments[0].path)")
+            throw ScreenreelError.invariantViolated("cannot read video format from \(videoSegments[0].path)")
         }
         let videoInput = AVAssetWriterInput(
             mediaType: .video, outputSettings: nil, sourceFormatHint: formatHint)
@@ -158,7 +158,7 @@ public enum SegmentAssembler {
         }
 
         guard writer.startWriting() else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "export writer failed to start: \(writer.error.map { "\($0)" } ?? "unknown")")
         }
         writer.startSession(atSourceTime: .zero)
@@ -186,7 +186,7 @@ public enum SegmentAssembler {
         await writer.finishWriting()
         guard writer.status == .completed else {
             try? fm.removeItem(at: partialURL)
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "export mux failed: \(writer.error.map { "\($0)" } ?? "status \(writer.status.rawValue)")")
         }
 
@@ -194,7 +194,7 @@ public enum SegmentAssembler {
         // the file exists, is readable, and passes duration checks).
         let probe = await AVMediaInspector().probe(url: partialURL, container: .mov)
         guard probe.decodable, let exportedDuration = probe.durationNs else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "exported file failed validation: \(probe.issues.joined(separator: "; "))")
         }
         if abs(exportedDuration - lastVideoEndNs) > 100_000_000 {
@@ -202,7 +202,7 @@ public enum SegmentAssembler {
                 "exported duration \(Double(exportedDuration) / 1e9)s vs project \(Double(lastVideoEndNs) / 1e9)s")
         }
         if let frameCount = probe.video?.frameCount, frameCount != videoResult.frames {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "exported file has \(frameCount) video samples, expected \(videoResult.frames)")
         }
 
@@ -256,14 +256,14 @@ public enum SegmentAssembler {
     ) async throws -> Int {
         let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-            throw AksError.invariantViolated("\(segment.path): no video track")
+            throw ScreenreelError.invariantViolated("\(segment.path): no video track")
         }
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
         output.alwaysCopiesSampleData = false
         reader.add(output)
         guard reader.startReading() else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "\(segment.path): reader failed: \(reader.error.map { "\($0)" } ?? "unknown")")
         }
 
@@ -283,7 +283,7 @@ public enum SegmentAssembler {
             copied += CMSampleBufferGetNumSamples(sample)
         }
         if reader.status == .failed {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "\(segment.path): read failed: \(reader.error.map { "\($0)" } ?? "unknown")")
         }
         return copied
@@ -312,7 +312,7 @@ public enum SegmentAssembler {
             sampleTimingEntryCount: count, sampleTimingArray: &timing,
             sampleBufferOut: &retimedOut)
         guard status == noErr, let retimedOut else {
-            throw AksError.invariantViolated("retiming failed (status \(status))")
+            throw ScreenreelError.invariantViolated("retiming failed (status \(status))")
         }
         return retimedOut
     }
@@ -340,7 +340,7 @@ public enum SegmentAssembler {
         guard let audioFormat = makeAudioFormatDescription(
             sampleRate: sampleRate, channels: mixChannels)
         else {
-            throw AksError.invariantViolated("cannot create audio format description")
+            throw ScreenreelError.invariantViolated("cannot create audio format description")
         }
 
         let blockFrames = 24_000  // 0.5 s
@@ -426,7 +426,7 @@ public enum SegmentAssembler {
             offsetToData: 0, dataLength: byteCount, flags: 0,
             blockBufferOut: &blockBuffer)
         guard status == noErr, let blockBuffer else {
-            throw AksError.invariantViolated("audio block buffer failed (status \(status))")
+            throw ScreenreelError.invariantViolated("audio block buffer failed (status \(status))")
         }
         status = samples.withUnsafeBytes { bytes in
             CMBlockBufferReplaceDataBytes(
@@ -434,7 +434,7 @@ public enum SegmentAssembler {
                 offsetIntoDestination: 0, dataLength: byteCount)
         }
         guard status == noErr else {
-            throw AksError.invariantViolated("audio block copy failed (status \(status))")
+            throw ScreenreelError.invariantViolated("audio block copy failed (status \(status))")
         }
         var sampleBuffer: CMSampleBuffer?
         status = CMAudioSampleBufferCreateReadyWithPacketDescriptions(
@@ -446,7 +446,7 @@ public enum SegmentAssembler {
             packetDescriptions: nil,
             sampleBufferOut: &sampleBuffer)
         guard status == noErr, let sampleBuffer else {
-            throw AksError.invariantViolated("audio sample buffer failed (status \(status))")
+            throw ScreenreelError.invariantViolated("audio sample buffer failed (status \(status))")
         }
         return sampleBuffer
     }
@@ -457,14 +457,14 @@ public enum SegmentAssembler {
         try Task.checkCancellation()
         while !input.isReadyForMoreMediaData {
             if writer.status == .failed {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "export writer failed: \(writer.error.map { "\($0)" } ?? "unknown")")
             }
             try await Task.sleep(nanoseconds: 2_000_000)
         }
         try Task.checkCancellation()
         guard input.append(sample) else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "export append failed: \(writer.error.map { "\($0)" } ?? "unknown")")
         }
     }

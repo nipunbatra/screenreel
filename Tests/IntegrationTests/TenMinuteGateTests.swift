@@ -9,17 +9,17 @@ import XCTest
 /// decodable, logical duration within one frame.
 ///
 /// Run explicitly — it writes ~2 GB and takes several minutes:
-///   AKS_RUN_LONG_TESTS=1 swift test --filter TenMinuteGateTests
+///   SCREENREEL_RUN_LONG_TESTS=1 swift test --filter TenMinuteGateTests
 final class TenMinuteGateTests: XCTestCase {
     func testTenMinute4K30CaptureGate() async throws {
-        guard ProcessInfo.processInfo.environment["AKS_RUN_LONG_TESTS"] == "1" else {
-            throw XCTSkip("set AKS_RUN_LONG_TESTS=1 to run the ten-minute 4K gate")
+        guard ProcessInfo.processInfo.environment["SCREENREEL_RUN_LONG_TESTS"] == "1" else {
+            throw XCTSkip("set SCREENREEL_RUN_LONG_TESTS=1 to run the ten-minute 4K gate")
         }
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-10min-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-10min-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let projectURL = directory.appendingPathComponent("tenminute.aks")
+        let projectURL = directory.appendingPathComponent("tenminute.screenreel")
 
         let durationNs: Int64 = 600_000_000_000
         let pace: Double = 2  // 2× real time: ~5 minutes of wall clock

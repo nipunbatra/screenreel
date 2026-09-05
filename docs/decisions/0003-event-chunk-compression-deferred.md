@@ -20,7 +20,7 @@ in Milestone 0.
    Milestone 0 implementation is passthrough. Introducing zstd later changes
    the committed extension to `.jsonl.zst` without touching the commit
    protocol.
-3. The validator, recovery, and `aks extract` accept both `.jsonl` and
+3. The validator, recovery, and `screenreel extract` accept both `.jsonl` and
    `.jsonl.zst` chunk names from day one, so projects written after the
    compressor lands remain readable by Milestone 0 readers only if
    uncompressed; readers therefore treat an unknown compressed chunk as an

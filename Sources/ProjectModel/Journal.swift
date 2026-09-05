@@ -30,7 +30,7 @@ public enum JournalReader {
         do {
             data = try Data(contentsOf: url)
         } catch {
-            throw AksError.ioFailed(operation: "read journal", path: url.path, errno: ENOENT)
+            throw ScreenreelError.ioFailed(operation: "read journal", path: url.path, errno: ENOENT)
         }
         guard let text = String(data: data, encoding: .utf8) else {
             return JournalScan(records: [], truncationReason: "journal is not valid UTF-8", truncatedAtLine: 1)
@@ -55,10 +55,10 @@ public enum JournalReader {
                     truncationReason: "unparseable (torn?) record: \(error)",
                     truncatedAtLine: lineNumber)
             }
-            guard record.schemaVersion <= AksSchema.currentVersion else {
+            guard record.schemaVersion <= ProjectSchema.currentVersion else {
                 return JournalScan(
                     records: records,
-                    truncationReason: "record schemaVersion \(record.schemaVersion) is newer than supported \(AksSchema.currentVersion)",
+                    truncationReason: "record schemaVersion \(record.schemaVersion) is newer than supported \(ProjectSchema.currentVersion)",
                     truncatedAtLine: lineNumber)
             }
             guard record.sequence == expectedSequence else {
@@ -108,7 +108,7 @@ public actor JournalWriter {
     public init(resumingAt url: URL) throws {
         let scan = try JournalReader.scan(url: url)
         if let reason = scan.truncationReason {
-            throw AksError.journalInvalid(reason: reason, atLine: scan.truncatedAtLine ?? 0)
+            throw ScreenreelError.journalInvalid(reason: reason, atLine: scan.truncatedAtLine ?? 0)
         }
         self.file = try DurableAppendFile(url: url)
         self.nextSequence = scan.lastSequence + 1
@@ -143,7 +143,7 @@ public actor JournalWriter {
         durable: Bool = true
     ) throws -> JournalRecord {
         var record = JournalRecord(
-            schemaVersion: AksSchema.currentVersion,
+            schemaVersion: ProjectSchema.currentVersion,
             sequence: nextSequence,
             type: type,
             timeNs: timeNs,
@@ -169,17 +169,17 @@ public actor JournalWriter {
     /// record or `synchronize()`.
     public func replayVerified(_ record: JournalRecord) throws {
         guard record.sequence == nextSequence else {
-            throw AksError.journalInvalid(
+            throw ScreenreelError.journalInvalid(
                 reason: "replay sequence \(record.sequence), expected \(nextSequence)",
                 atLine: Int(record.sequence))
         }
         guard record.prevHash == prevHash else {
-            throw AksError.journalInvalid(
+            throw ScreenreelError.journalInvalid(
                 reason: "replay chain break at sequence \(record.sequence)",
                 atLine: Int(record.sequence))
         }
         guard let computed = try? record.computedHash(), computed == record.hash else {
-            throw AksError.journalInvalid(
+            throw ScreenreelError.journalInvalid(
                 reason: "replay checksum mismatch at sequence \(record.sequence)",
                 atLine: Int(record.sequence))
         }

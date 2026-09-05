@@ -185,7 +185,7 @@ public final class EventTapSource: @unchecked Sendable {
             userInfo: context)
         else {
             Unmanaged<EventTapSource>.fromOpaque(context).release()
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "Could not create event tap. Grant Input Monitoring/Accessibility permission "
                     + "to the invoking terminal in System Settings → Privacy & Security.")
         }
@@ -199,7 +199,7 @@ public final class EventTapSource: @unchecked Sendable {
             CGEvent.tapEnable(tap: tap, enable: true)
             CFRunLoopRun()
         }
-        thread.name = "aks.event-tap"
+        thread.name = "screenreel.event-tap"
         // The callback gates WindowServer's event delivery for EVERY app;
         // on a loaded machine a default-priority thread gets starved and
         // the whole system's pointer stutters (and the tap times out).

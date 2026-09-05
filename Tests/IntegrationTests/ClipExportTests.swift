@@ -17,7 +17,7 @@ final class ClipExportTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-clips-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-clips-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
     }

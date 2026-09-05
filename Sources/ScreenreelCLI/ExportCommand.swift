@@ -17,7 +17,7 @@ struct Export: AsyncParsableCommand {
             graph instead (use --height/--fps to tune size).
             """)
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Argument(help: "Output MP4 path (default: '<project name>.mp4' next to the project).")
@@ -66,8 +66,8 @@ struct Export: AsyncParsableCommand {
                     throw CLIError.failed(
                         "export preflight failed: referenced asset is missing: \(segment.path) "
                             + "(track \(track.type.rawValue), segment #\(segment.sequenceInTrack)). "
-                            + "Raw media is never touched by export; run `aks validate` for the "
-                            + "full picture and `aks recover` to rebuild a consistent copy.")
+                            + "Raw media is never touched by export; run `screenreel validate` for the "
+                            + "full picture and `screenreel recover` to rebuild a consistent copy.")
                 }
             }
         }

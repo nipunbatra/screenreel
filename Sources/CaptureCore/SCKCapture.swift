@@ -26,7 +26,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
     private let excludeOwnWindows: Bool
 
     private var stream: SCStream?
-    private let outputQueue = DispatchQueue(label: "aks.sck.output", qos: .userInitiated)
+    private let outputQueue = DispatchQueue(label: "screenreel.sck.output", qos: .userInitiated)
     // One converter per audio stream (each holds per-format state); both are
     // only ever touched on outputQueue.
     private let micConverter = SampleBufferAudioConverter()
@@ -105,7 +105,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
         guard let display = content.displays.first(where: { $0.displayID == displayID })
             ?? content.displays.first
         else {
-            throw AksError.invariantViolated("no display to preview")
+            throw ScreenreelError.invariantViolated("no display to preview")
         }
         let ownPID = ProcessInfo.processInfo.processIdentifier
         let ownWindows = content.windows.filter {
@@ -122,7 +122,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
             guard let windowID,
                 let window = content.windows.first(where: { $0.windowID == windowID })
             else {
-                throw AksError.invariantViolated("selected window is gone")
+                throw ScreenreelError.invariantViolated("selected window is gone")
             }
             filter = SCContentFilter(desktopIndependentWindow: window)
             sourceWidth = Int(window.frame.width)
@@ -133,7 +133,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
                     $0.bundleIdentifier == appBundleID
                 })
             else {
-                throw AksError.invariantViolated("selected app is not running")
+                throw ScreenreelError.invariantViolated("selected app is not running")
             }
             filter = SCContentFilter(
                 display: display, including: [app], exceptingWindows: ownWindows)
@@ -263,7 +263,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
         guard let display = content.displays.first(where: {
             Int($0.displayID) == configuration.displayID
         }) ?? content.displays.first else {
-            throw AksError.invariantViolated("no capturable display found")
+            throw ScreenreelError.invariantViolated("no capturable display found")
         }
 
         var excludedWindows: [SCWindow] = []
@@ -283,7 +283,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
             guard let windowID = configuration.windowID,
                 let window = content.windows.first(where: { $0.windowID == windowID })
             else {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "the selected window is gone; pick another window and retry")
             }
             filter = SCContentFilter(desktopIndependentWindow: window)
@@ -291,7 +291,7 @@ public final class SCKCapture: NSObject, @unchecked Sendable {
             guard let bundleID = configuration.appBundleID,
                 let app = content.applications.first(where: { $0.bundleIdentifier == bundleID })
             else {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "the selected application is not running; launch it and retry")
             }
             filter = SCContentFilter(

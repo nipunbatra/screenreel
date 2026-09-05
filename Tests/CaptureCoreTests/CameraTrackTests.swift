@@ -11,9 +11,9 @@ final class CameraTrackTests: XCTestCase {
 
     func testCameraTrackRecordsSegmentsAlongsideScreen() async throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-camera-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-camera-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
-        let projectURL = root.appendingPathComponent("cam.aks")
+        let projectURL = root.appendingPathComponent("cam.screenreel")
 
         let durationNs: Int64 = 5_000_000_000
         let configuration = CaptureConfiguration(
@@ -76,9 +76,9 @@ final class CameraTrackTests: XCTestCase {
 
     func testSessionWithoutCameraHasNoCameraTrack() async throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-nocam-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-nocam-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
-        let projectURL = root.appendingPathComponent("plain.aks")
+        let projectURL = root.appendingPathComponent("plain.screenreel")
 
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,

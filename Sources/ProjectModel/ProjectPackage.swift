@@ -1,6 +1,6 @@
 import Foundation
 
-/// Creation and loading of `.aks` packages. Creation follows the durable
+/// Creation and loading of `.screenreel` packages. Creation follows the durable
 /// write order from `docs/TECHNICAL_DESIGN.md` §3: directories and
 /// `session.lock` first, then the initial manifest atomically, then the
 /// journal's `sessionCreated` record.
@@ -21,7 +21,7 @@ public enum ProjectPackage {
         let layout = ProjectLayout(root: url)
         let fm = FileManager.default
         guard !fm.fileExists(atPath: url.path) else {
-            throw AksError.ioFailed(operation: "create project", path: url.path, errno: EEXIST)
+            throw ScreenreelError.ioFailed(operation: "create project", path: url.path, errno: EEXIST)
         }
         for dir in layout.initialDirectories {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -55,10 +55,10 @@ public enum ProjectPackage {
         let layout = ProjectLayout(root: url)
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else {
-            throw AksError.notAProject(path: url.path, reason: "no such directory")
+            throw ScreenreelError.notAProject(path: url.path, reason: "no such directory")
         }
         guard fm.fileExists(atPath: layout.manifestURL.path) else {
-            throw AksError.notAProject(path: url.path, reason: "manifest.json missing")
+            throw ScreenreelError.notAProject(path: url.path, reason: "manifest.json missing")
         }
         let manifestData = try Data(contentsOf: layout.manifestURL)
         let manifest = try Manifest.decode(from: manifestData, path: layout.manifestURL.path)

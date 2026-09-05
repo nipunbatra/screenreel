@@ -16,7 +16,7 @@ final class DiskSpaceTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-disk-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-disk-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -86,7 +86,7 @@ final class DiskSpaceTests: XCTestCase {
     /// finalized, project loads, validation healthy or recoverable, and the
     /// operator saw the warning.
     func testExhaustedDiskStopsSessionCleanly() async throws {
-        let projectURL = directory.appendingPathComponent("full.aks")
+        let projectURL = directory.appendingPathComponent("full.screenreel")
         let warnings = WarningRecorder()
         // First heartbeat sees plenty; every later probe is below 50 MB.
         let provider = FakeFreeSpaceProvider(sequence: [10_000_000_000], then: 30_000_000)
@@ -151,7 +151,7 @@ final class DiskSpaceTests: XCTestCase {
     /// (b) The soft threshold journals and warns exactly once per session,
     /// and never escalates to a stop.
     func testLowDiskWarnsExactlyOnce() async throws {
-        let projectURL = directory.appendingPathComponent("low.aks")
+        let projectURL = directory.appendingPathComponent("low.screenreel")
         let warnings = WarningRecorder()
         // Above the hard floor forever, below the soft one after beat 1:
         // multiple low heartbeats must still produce a single warning.
@@ -182,7 +182,7 @@ final class DiskSpaceTests: XCTestCase {
     func testDefaultProviderResolvesNotYetCreatedPaths() throws {
         let provider = DefaultFreeSpaceProvider()
 
-        let deep = directory.appendingPathComponent("not/yet/created/session.aks")
+        let deep = directory.appendingPathComponent("not/yet/created/session.screenreel")
         XCTAssertFalse(FileManager.default.fileExists(atPath: deep.path))
         let deepFree = try XCTUnwrap(provider.freeBytes(for: deep))
         XCTAssertGreaterThan(deepFree, 0)
@@ -195,7 +195,7 @@ final class DiskSpaceTests: XCTestCase {
         XCTAssertLessThan(Double(deepFree) / Double(baseFree), 2.0)
 
         // A wholly fictional root walks all the way up to "/".
-        let fictional = URL(fileURLWithPath: "/aks-no-such-volume-\(UUID().uuidString)/a/b")
+        let fictional = URL(fileURLWithPath: "/screenreel-no-such-volume-\(UUID().uuidString)/a/b")
         XCTAssertNotNil(provider.freeBytes(for: fictional))
     }
 }

@@ -28,7 +28,7 @@ public struct RecoveryOptions: Sendable {
     public var attachOrphans: Bool
     public var mediaInspector: MediaInspecting?
     /// Destination package; defaults to a sibling
-    /// `<name> Recovered <timestamp>.aks`.
+    /// `<name> Recovered <timestamp>.screenreel`.
     public var destination: URL?
 
     public init(
@@ -71,7 +71,7 @@ public enum Recovery {
         if let lock = try? SessionLock.read(from: originalLayout.sessionLockURL),
             lock.writerIsAlive()
         {
-            throw AksError.sessionActive(path: originalURL.path, pid: lock.pid)
+            throw ScreenreelError.sessionActive(path: originalURL.path, pid: lock.pid)
         }
 
         // Terminal-status gate: any surviving marker means a prior attempt
@@ -90,7 +90,7 @@ public enum Recovery {
         // failed attempt — checked before the marker is written.
         let destination = options.destination ?? defaultDestination(for: originalURL)
         guard !fm.fileExists(atPath: destination.path) else {
-            throw AksError.ioFailed(operation: "create recovered package", path: destination.path, errno: EEXIST)
+            throw ScreenreelError.ioFailed(operation: "create recovered package", path: destination.path, errno: EEXIST)
         }
 
         var marker = RecoveryAttemptMarker(
@@ -342,7 +342,7 @@ public enum Recovery {
             type: .sessionCreated, timeNs: 0,
             payload: JSONValue(encoding: [
                 "projectID": projectID.uuidString,
-                "appVersion": AksSchema.toolVersion,
+                "appVersion": ProjectSchema.toolVersion,
                 "recoveredFrom": originalURL.lastPathComponent,
             ]))
         for track in tracksFromJournal {
@@ -422,7 +422,7 @@ public enum Recovery {
             recoveredPath: destination.path,
             startedAt: startedAt,
             finishedAt: RFC3339.now(),
-            toolVersion: AksSchema.toolVersion,
+            toolVersion: ProjectSchema.toolVersion,
             journalTrustedRecords: scan.records.count,
             journalTruncationReason: scan.truncationReason,
             recoveredSegments: journaledSegments.count,
@@ -469,7 +469,7 @@ public enum Recovery {
             .replacingOccurrences(of: ":", with: "-")
             .prefix(19)
         return original.deletingLastPathComponent()
-            .appendingPathComponent("\(base) Recovered \(stamp).aks")
+            .appendingPathComponent("\(base) Recovered \(stamp).screenreel")
     }
 
     /// Returns true when the committed asset verifies (exists, size, hash,
@@ -705,7 +705,7 @@ public enum Recovery {
             timeline: original?.timeline,
             durationNs: maxEndNs,
             generation: (original?.generation ?? 0) + 1)
-        manifest.appVersion = AksSchema.toolVersion
+        manifest.appVersion = ProjectSchema.toolVersion
         return manifest
     }
 }
@@ -738,13 +738,13 @@ public struct RecoveryAttemptMarker: Codable, Sendable, Equatable {
     public var toolVersion: String
 
     public init(startedAt: String, outcome: Outcome, destination: String) {
-        self.schemaVersion = AksSchema.currentVersion
+        self.schemaVersion = ProjectSchema.currentVersion
         self.startedAt = startedAt
         self.finishedAt = nil
         self.outcome = outcome
         self.error = nil
         self.destination = destination
-        self.toolVersion = AksSchema.toolVersion
+        self.toolVersion = ProjectSchema.toolVersion
     }
 
     public static let fileName = ".recovery-attempt.json"

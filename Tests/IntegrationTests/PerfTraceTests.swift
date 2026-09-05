@@ -12,7 +12,7 @@ final class PerfTraceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-perf-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-perf-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +22,7 @@ final class PerfTraceTests: XCTestCase {
     }
 
     func testSessionWritesPerfTraceAndSummary() async throws {
-        let projectURL = directory.appendingPathComponent("perf.aks")
+        let projectURL = directory.appendingPathComponent("perf.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

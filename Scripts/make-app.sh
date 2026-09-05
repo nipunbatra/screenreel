@@ -29,7 +29,7 @@ ALLOW_ADHOC="${ALLOW_ADHOC:-0}"
 if [ "$REQUIRE_DEVELOPER_ID" = "1" ] && [ "$ALLOW_ADHOC" = "1" ]; then
     echo "REQUIRE_DEVELOPER_ID=1 and ALLOW_ADHOC=1 contradict each other" >&2; exit 1
 fi
-swift build -c release --product AksApp
+swift build -c release --product ScreenreelApp
 
 # Assemble in a staging directory and swap in only after signing succeeds.
 FINAL_APP="$OUT/${APP_NAME}.app"
@@ -38,7 +38,7 @@ rm -rf "$STAGE"
 APP="$STAGE/${APP_NAME}.app"
 trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$APP/Contents/MacOS"
-cp .build/release/AksApp "$APP/Contents/MacOS/${APP_NAME}"
+cp .build/release/ScreenreelApp "$APP/Contents/MacOS/${APP_NAME}"
 
 # App icon: generated original artwork, cached across builds.
 ICON_CACHE=".build/AppIcon.icns"
@@ -54,7 +54,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key><string>APP_NAME_PLACEHOLDER</string>
-    <key>CFBundleIdentifier</key><string>in.aks.app</string>
+    <key>CFBundleIdentifier</key><string>com.nipunbatra.screenreel</string>
     <key>CFBundleName</key><string>APP_NAME_PLACEHOLDER</string>
     <key>CFBundleDisplayName</key><string>APP_NAME_PLACEHOLDER</string>
     <key>CFBundlePackageType</key><string>APPL</string>

@@ -154,7 +154,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-vr-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-vr-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -164,7 +164,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         super.tearDown()
     }
 
-    private var projectURL: URL { directory.appendingPathComponent("p.aks") }
+    private var projectURL: URL { directory.appendingPathComponent("p.screenreel") }
 
     func testHealthyProjectValidates() async throws {
         try await TestProject.build(at: projectURL)
@@ -280,7 +280,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         try data.write(to: corrupt)
 
         let originalJournal = try Data(contentsOf: built.layout.journalURL)
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let report = try await Recovery.recover(
             projectAt: projectURL,
             options: RecoveryOptions(destination: recoveredURL))
@@ -317,7 +317,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         do {
             _ = try await Recovery.recover(projectAt: projectURL)
             XCTFail("expected sessionActive")
-        } catch let error as AksError {
+        } catch let error as ScreenreelError {
             guard case .sessionActive = error else {
                 return XCTFail("expected sessionActive, got \(error)")
             }
@@ -331,7 +331,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         let orphan = built.layout.microphoneDirectory.appendingPathComponent("mic-000003.caf")
         try Data("orphan tail bytes".utf8).write(to: orphan)
 
-        let recoveredURL = directory.appendingPathComponent("recovered-attach.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered-attach.screenreel")
         let report = try await Recovery.recover(
             projectAt: projectURL,
             options: RecoveryOptions(
@@ -370,7 +370,7 @@ final class ValidatorRecoveryTests: XCTestCase {
         // Crash during manifest replacement: the main manifest is torn.
         try Data("torn json".utf8).write(to: built.layout.manifestURL)
 
-        let recoveredURL = directory.appendingPathComponent("recovered-identity.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered-identity.screenreel")
         _ = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         let recovered = try ProjectPackage.load(at: recoveredURL)

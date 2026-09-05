@@ -7,7 +7,7 @@ struct Validate: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Validate a project: journal chain, committed assets, checksums, decodability.")
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Flag(help: "Skip SHA-256 verification of committed assets.")
@@ -63,7 +63,7 @@ struct Validate: AsyncParsableCommand {
         }
         print(report.isHealthy ? "RESULT: healthy" : "RESULT: PROBLEMS FOUND")
         if report.needsRecovery {
-            print("Recovery recommended: aks recover \"\(report.projectPath)\"")
+            print("Recovery recommended: screenreel recover \"\(report.projectPath)\"")
         }
     }
 }

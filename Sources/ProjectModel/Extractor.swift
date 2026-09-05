@@ -23,7 +23,7 @@ public enum Extractor {
         let layout = ProjectLayout(root: projectURL)
         let fm = FileManager.default
         guard fm.fileExists(atPath: projectURL.path) else {
-            throw AksError.notAProject(path: projectURL.path, reason: "no such directory")
+            throw ScreenreelError.notAProject(path: projectURL.path, reason: "no such directory")
         }
         try fm.createDirectory(at: destination, withIntermediateDirectories: true)
 

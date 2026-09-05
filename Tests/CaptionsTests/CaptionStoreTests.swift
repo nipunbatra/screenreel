@@ -12,7 +12,7 @@ final class CaptionStoreTests: XCTestCase {
 
     override func setUpWithError() throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("captionstore-\(UUID().uuidString).aks")
+            .appendingPathComponent("captionstore-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: root)
         try FileManager.default.createDirectory(
             at: root, withIntermediateDirectories: true)

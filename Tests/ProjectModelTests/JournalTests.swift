@@ -9,7 +9,7 @@ final class JournalTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false  // speed; durability semantics tested elsewhere
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-journal-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-journal-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

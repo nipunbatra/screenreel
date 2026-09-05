@@ -16,7 +16,7 @@ enum SyntheticProjectFactory {
         micSilenceAfterNs: Int64? = nil,
         pace: Double = 4
     ) async throws -> URL {
-        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).aks")
+        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).screenreel")
         let configuration = CaptureConfiguration(
             widthPx: width, heightPx: height, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Rebrand in one place: `APP_NAME="NewName" Scripts/make-app.sh` stamps the
 /// bundle's display name, and every UI string reads it from here. On-disk
-/// identifiers (`in.aks.project`, the `.aks` package extension, bundle id)
+/// identifiers (`com.nipunbatra.screenreel.project`, the `.screenreel` package extension, bundle id)
 /// deliberately do NOT change with the display name — existing projects stay
 /// readable and permissions stay bound.
 enum Branding {

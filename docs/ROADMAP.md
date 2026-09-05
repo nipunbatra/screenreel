@@ -12,7 +12,7 @@ The order is intentional. Do not build the beautiful editor on top of a fragile 
 - Shared monotonic clock and per-stream timestamp diagnostics.
 - Cursor/click event capture with descriptor/hotspot records.
 - Versioned manifest, journal, atomic writes, and schema fixtures.
-- `aks validate`, `aks recover`, and `aks extract` commands.
+- `screenreel validate`, `screenreel recover`, and `screenreel extract` commands.
 - Minimal session UI: source selectors, meters, disk estimate, countdown, pause/resume/stop, fault warnings.
 
 ### Exit

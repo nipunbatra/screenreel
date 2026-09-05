@@ -12,7 +12,7 @@ final class ExportErrorContractTests: XCTestCase {
 
     func testMissingMiddleSegmentFailsNamingTheAsset() async throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-missmid-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-missmid-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)

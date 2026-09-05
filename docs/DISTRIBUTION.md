@@ -15,8 +15,8 @@ anything) a license unlocks are undecided, and the app gates nothing today.
 | Notarization | `Scripts/notarize.sh` | `notarytool --wait`, staple, `spctl` assessment of DMG and app |
 | GitHub release | `Scripts/release.sh` | tag `v$VERSION`, upload DMG (+ stable `Screenreel.dmg` alias), notes from `CHANGELOG.md` |
 | License keys | `Sources/Licensing`, `Scripts/make-license.swift` | offline Ed25519 verification; production public key is a placeholder |
-| License UI | `Sources/AksApp/LicenseView.swift`, `Entitlements.swift` | app menu → Enter License…; nothing gated |
-| Update check | `Sources/AksApp/UpdateCheck.swift` | manual + automatic (≤ 1/24 h); the app's only network call |
+| License UI | `Sources/ScreenreelApp/LicenseView.swift`, `Entitlements.swift` | app menu → Enter License…; nothing gated |
+| Update check | `Sources/ScreenreelApp/UpdateCheck.swift` | manual + automatic (≤ 1/24 h); the app's only network call |
 | Website | `website/index.html` | Download section live; Pro-license block present but disabled |
 
 ## Switches the owner must flip
@@ -28,13 +28,13 @@ anything) a license unlocks are undecided, and the app gates nothing today.
    developer note while the placeholder is in place, and
    `LicenseKeyTests.testPlaceholderProductionKeyAcceptsNothing` asserts it;
    flip that test's expectation when the real key is installed.
-2. **Purchase link** — `Sources/AksApp/Branding.swift`, `Branding.purchaseURL`.
+2. **Purchase link** — `Sources/ScreenreelApp/Branding.swift`, `Branding.purchaseURL`.
    `nil` hides every "Buy a License…" button. Set it to the checkout page.
 3. **Website Pro block** — `website/index.html`, the `<section id="pro" hidden>`
    marked `PRICING_FLAG`. Remove the `hidden` attribute and fill in
    `data-purchase-url` once pricing is decided. There is no price text to
    edit because none was invented.
-4. **Gating** — `Sources/AksApp/Entitlements.swift` exposes `isLicensed` and
+4. **Gating** — `Sources/ScreenreelApp/Entitlements.swift` exposes `isLicensed` and
    `updatesCovered`. Nothing reads them to restrict behaviour. When a gate is
    introduced, read it from `Entitlements` so the license window, tests, and
    the feature agree.
@@ -102,8 +102,8 @@ default path tries it and stops at `errSecInternalComponent`).
 
 `swift build` produces a binary for the host architecture; the current DMG is
 Apple silicon. For a universal build run
-`swift build -c release --product AksApp --arch arm64 --arch x86_64` and copy
-`.build/apple/Products/Release/AksApp` in place of `.build/release/AksApp`
+`swift build -c release --product ScreenreelApp --arch arm64 --arch x86_64` and copy
+`.build/apple/Products/Release/ScreenreelApp` in place of `.build/release/ScreenreelApp`
 (not wired into `make-app.sh` yet — do it deliberately and update the website's
 requirements line).
 

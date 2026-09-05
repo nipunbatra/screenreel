@@ -44,7 +44,7 @@ public final class CameraCapture: NSObject, ScreenFrameSource, @unchecked Sendab
     /// consumers; they never touch the recorded frames.
     public var captureSession: AVCaptureSession { session }
     private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "aks.camera", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "screenreel.camera", qos: .userInitiated)
     private let handler = Mutex<(@Sendable (VideoFrame) -> Void)?>(nil)
 
     public init(clock: SessionClock, deviceID: String?) {
@@ -58,13 +58,13 @@ public final class CameraCapture: NSObject, ScreenFrameSource, @unchecked Sendab
         let device = deviceID.flatMap { AVCaptureDevice(uniqueID: $0) }
             ?? AVCaptureDevice.default(for: .video)
         guard let device else {
-            throw AksError.invariantViolated("no camera available")
+            throw ScreenreelError.invariantViolated("no camera available")
         }
         let input = try AVCaptureDeviceInput(device: device)
         session.beginConfiguration()
         guard session.canAddInput(input) else {
             session.commitConfiguration()
-            throw AksError.invariantViolated("camera input rejected (permission denied?)")
+            throw ScreenreelError.invariantViolated("camera input rejected (permission denied?)")
         }
         session.addInput(input)
         output.videoSettings = [
@@ -74,7 +74,7 @@ public final class CameraCapture: NSObject, ScreenFrameSource, @unchecked Sendab
         output.setSampleBufferDelegate(self, queue: queue)
         guard session.canAddOutput(output) else {
             session.commitConfiguration()
-            throw AksError.invariantViolated("camera output rejected")
+            throw ScreenreelError.invariantViolated("camera output rejected")
         }
         session.addOutput(output)
         session.commitConfiguration()

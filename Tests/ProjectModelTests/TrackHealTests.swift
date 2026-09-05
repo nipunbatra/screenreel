@@ -138,7 +138,7 @@ final class TrackHealTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-heal-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-heal-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -148,7 +148,7 @@ final class TrackHealTests: XCTestCase {
         super.tearDown()
     }
 
-    private var projectURL: URL { directory.appendingPathComponent("p.aks") }
+    private var projectURL: URL { directory.appendingPathComponent("p.screenreel") }
 
     private func micSegments(in manifest: Manifest) throws -> [SegmentDescriptor] {
         let track = try XCTUnwrap(manifest.tracks.first { $0.type == .microphone })
@@ -174,7 +174,7 @@ final class TrackHealTests: XCTestCase {
 
         // Heal: siblings AND journal wall span agree → time mapping rewritten
         // in the recovered copy by the measured factor.
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.healedTracks, [micID.uuidString])
@@ -221,7 +221,7 @@ final class TrackHealTests: XCTestCase {
         XCTAssertFalse(report.issues.contains { $0.code == "track.timeScaleAnomaly" })
 
         let originalManifest = try Data(contentsOf: built.layout.manifestURL)
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.healedTracks, [])
@@ -250,7 +250,7 @@ final class TrackHealTests: XCTestCase {
         XCTAssertTrue(anomaly.message.contains("refused"), anomaly.message)
 
         // Recovery flags it too and preserves the descriptors verbatim.
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.healedTracks, [])
@@ -273,7 +273,7 @@ final class TrackHealTests: XCTestCase {
         let report = await Validator().validate(projectAt: projectURL)
         XCTAssertFalse(report.issues.contains { $0.code == "track.timeScaleAnomaly" })
 
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.healedTracks, [])
@@ -296,7 +296,7 @@ final class TrackHealTests: XCTestCase {
             report.issues.contains { $0.code == "track.timeScaleAnomaly" },
             "\(report.issues)")
 
-        let recoveredURL = directory.appendingPathComponent("recovered.aks")
+        let recoveredURL = directory.appendingPathComponent("recovered.screenreel")
         let recovery = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recoveredURL))
         XCTAssertEqual(recovery.healedTracks, [])

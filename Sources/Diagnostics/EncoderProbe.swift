@@ -4,7 +4,7 @@ import CoreVideo
 import Foundation
 import ProjectModel
 
-/// Result of the encoder capability probe, reported by `aks diagnose`.
+/// Result of the encoder capability probe, reported by `screenreel diagnose`.
 public struct EncoderProbeResult: Codable, Sendable {
     public var passed: Bool
     public var codec: String
@@ -18,7 +18,7 @@ public struct EncoderProbeResult: Codable, Sendable {
 
 /// Encode/decode self-test: push a few mid-gray frames through AVAssetWriter /
 /// VideoToolbox into a temp file, decode them back, and check the mean luma.
-/// Catches "the encoder produces black or garbage frames" in `aks diagnose`,
+/// Catches "the encoder produces black or garbage frames" in `screenreel diagnose`,
 /// before a real recording pays for it. Media never leaves the temp file and
 /// the file is removed afterwards.
 public enum EncoderCapabilityProbe {
@@ -35,7 +35,7 @@ public enum EncoderCapabilityProbe {
             encodedFrameCount: 0, decodedFrameCount: 0,
             meanLuma: nil, failureReason: nil)
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-encoder-probe-\(UUID().uuidString).mov")
+            .appendingPathComponent("screenreel-encoder-probe-\(UUID().uuidString).mov")
         defer { try? FileManager.default.removeItem(at: url) }
         do {
             result.encodedFrameCount = try await encodeGrayFrames(

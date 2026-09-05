@@ -164,7 +164,7 @@ func renderPNG(size: Int, to url: URL) throws {
 }
 
 let temporary = FileManager.default.temporaryDirectory
-    .appendingPathComponent("aks-icon-\(UUID().uuidString)")
+    .appendingPathComponent("screenreel-icon-\(UUID().uuidString)")
 let iconset = temporary.appendingPathComponent("AppIcon.iconset")
 try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
 defer { try? FileManager.default.removeItem(at: temporary) }

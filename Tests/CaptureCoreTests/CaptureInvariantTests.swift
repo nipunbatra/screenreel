@@ -18,8 +18,8 @@ final class CaptureInvariantTests: XCTestCase {
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-invariants-\(UUID().uuidString)")
-        let projectURL = root.appendingPathComponent("p.aks")
+            .appendingPathComponent("screenreel-invariants-\(UUID().uuidString)")
+        let projectURL = root.appendingPathComponent("p.screenreel")
         layout = ProjectLayout(root: projectURL)
         for directory in layout.initialDirectories {
             try? FileManager.default.createDirectory(
@@ -119,7 +119,7 @@ final class CaptureInvariantTests: XCTestCase {
     // MARK: Pause / resume
 
     func testPauseMarksDiscontinuityOnScreenAndCameraTracks() async throws {
-        let projectURL = root.appendingPathComponent("pause.aks")
+        let projectURL = root.appendingPathComponent("pause.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,
@@ -161,7 +161,7 @@ final class CaptureInvariantTests: XCTestCase {
     // MARK: A/V start alignment
 
     func testAudioAndVideoStartWithinTolerance() async throws {
-        let projectURL = root.appendingPathComponent("sync.aks")
+        let projectURL = root.appendingPathComponent("sync.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

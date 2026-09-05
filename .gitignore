@@ -8,8 +8,8 @@ xcuserdata/
 .claude/settings.local.json
 
 # Generated media and recoverable application projects do not belong in Git.
-*.aks/
-*.aks-export/
+*.screenreel/
+*.screenreel-export/
 *.mp4
 *.mov
 *.m4a
@@ -18,8 +18,8 @@ xcuserdata/
 *.log
 
 # Checked-in schema fixtures are exempt from the media/project ignores above.
-!Tests/ProjectModelTests/Fixtures/**/*.aks/
-!Tests/ProjectModelTests/Fixtures/**/*.aks/**
+!Tests/ProjectModelTests/Fixtures/**/*.screenreel/
+!Tests/ProjectModelTests/Fixtures/**/*.screenreel/**
 
 # Build artifacts
 dist/

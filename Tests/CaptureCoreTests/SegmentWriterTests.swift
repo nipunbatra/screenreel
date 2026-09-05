@@ -22,7 +22,7 @@ final class SegmentWriterTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-writers-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-writers-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         for dir in layout.initialDirectories {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

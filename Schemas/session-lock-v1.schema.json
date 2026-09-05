@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aks.in/schemas/session-lock-v1.schema.json",
-  "title": "Aks session.lock v1 — incomplete-session marker, not an OS lock",
+  "$id": "https://screenreel.in/schemas/session-lock-v1.schema.json",
+  "title": "Screenreel session.lock v1 — incomplete-session marker, not an OS lock",
   "type": "object",
   "required": [
     "schemaVersion", "sessionID", "pid", "processStartMarker",

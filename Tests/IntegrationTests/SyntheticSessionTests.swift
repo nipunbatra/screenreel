@@ -28,7 +28,7 @@ final class SyntheticSessionTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-integration-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-integration-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -96,7 +96,7 @@ final class SyntheticSessionTests: XCTestCase {
     }
 
     func testTwentySecondPacedSessionMeetsCaptureIntegrityGates() async throws {
-        let projectURL = directory.appendingPathComponent("session.aks")
+        let projectURL = directory.appendingPathComponent("session.screenreel")
         let durationNs: Int64 = 20_000_000_000
         let warnings = WarningLog()
         // pace 2 = a sustained 60 fps demand: double real-time load, with
@@ -146,7 +146,7 @@ final class SyntheticSessionTests: XCTestCase {
     /// warning within two seconds (plus one heartbeat), a journaled fault,
     /// and the committed mic track still covering everything before the cut.
     func testMicDropoutWarnsWithinTwoSecondsAndIsJournaled() async throws {
-        let projectURL = directory.appendingPathComponent("dropout.aks")
+        let projectURL = directory.appendingPathComponent("dropout.screenreel")
         let warnings = WarningLog()
         _ = try await runSession(
             projectURL: projectURL,
@@ -180,7 +180,7 @@ final class SyntheticSessionTests: XCTestCase {
     }
 
     func testPauseResumeCreatesExplicitDiscontinuity() async throws {
-        let projectURL = directory.appendingPathComponent("pause.aks")
+        let projectURL = directory.appendingPathComponent("pause.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

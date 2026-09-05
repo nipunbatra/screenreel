@@ -19,9 +19,9 @@ final class AudioRateLieTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-ratelie-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-ratelie-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        layout = ProjectLayout(root: directory.appendingPathComponent("writer.aks"))
+        layout = ProjectLayout(root: directory.appendingPathComponent("writer.screenreel"))
         for dir in layout.initialDirectories {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
@@ -170,7 +170,7 @@ final class AudioRateLieTests: XCTestCase {
     /// `audio.rateMismatch` fault naming declared vs observed, and
     /// descriptors committed after detection carry the observed 24 000 Hz.
     func testHalfRateCadenceIsDetectedJournaledOnceAndStamped() async throws {
-        let projectURL = directory.appendingPathComponent("lie.aks")
+        let projectURL = directory.appendingPathComponent("lie.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

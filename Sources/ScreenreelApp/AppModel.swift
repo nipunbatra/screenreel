@@ -62,11 +62,11 @@ final class AppModel {
     /// persists and re-registers the global hotkeys.
     private(set) var preferences = Preferences()
     private let preferencesStore = PreferencesStore()
-    /// True for AKS_AUTOPILOT_DIR harness launches: no global hotkeys, no
+    /// True for SCREENREEL_AUTOPILOT_DIR harness launches: no global hotkeys, no
     /// menu-bar item, a one-second countdown, no mic/camera — nothing that
     /// could grab the user's keyboard, pop a permission dialog, or sit on
     /// their screen longer than the flow needs.
-    let isHarnessRun = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_DIR"] != nil
+    let isHarnessRun = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_DIR"] != nil
     /// SwiftUI's openWindow/openSettings actions, captured by ContentView
     /// so the menu bar and hotkeys can bring windows back after the user
     /// closed them.
@@ -154,7 +154,7 @@ final class AppModel {
 
     init() {
         preferences = preferencesStore.load()
-        // Harness launches (AKS_AUTOPILOT_DIR) must never pop a system
+        // Harness launches (SCREENREEL_AUTOPILOT_DIR) must never pop a system
         // permission dialog on the user's screen: leave the microphone
         // meter and camera off so no AVFoundation access request fires.
         if isHarnessRun {
@@ -166,7 +166,7 @@ final class AppModel {
         // editor-only harness run that prompt would sit on the user's
         // screen unanswered. Only a real-capture harness run (or a normal
         // launch) touches ScreenCaptureKit at startup.
-        if !isHarnessRun || ProcessInfo.processInfo.environment["AKS_AUTOPILOT_RECORD"] != nil {
+        if !isHarnessRun || ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_RECORD"] != nil {
             refreshDisplays()
         }
         refreshRecents()
@@ -202,13 +202,15 @@ final class AppModel {
 
     // MARK: - Environment
 
+    /// ~/Movies/Screenreel, after the one-time rename of ~/Movies/Aks
+    /// (RecordingsFolder in AppSupport, tested against temp directories).
     static var defaultRecordingsDirectory: URL {
-        FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Aks")
+        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+        return RecordingsFolder.resolveDefault(in: movies).url
     }
 
     /// The folder new recordings land in: the user's choice from Settings
-    /// while it exists, else ~/Movies/Aks (created on demand).
+    /// while it exists, else ~/Movies/Screenreel (created on demand).
     var recordingsDirectory: URL {
         if let path = preferences.recordingsFolderPath {
             var isDirectory: ObjCBool = false
@@ -851,7 +853,7 @@ final class AppModel {
                     at: directory,
                     includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
                 return entries
-                    .filter { $0.pathExtension == AksSchema.packageExtension }
+                    .filter { ProjectSchema.isPackageExtension($0.pathExtension) }
                     .compactMap { url -> ProjectCard? in
                         let screenDirectory = ProjectLayout(root: url).screenDirectory
                         let hasScreenMedia = !((try? FileManager.default.contentsOfDirectory(
@@ -1052,7 +1054,8 @@ final class AppModel {
             return
         }
         let stamp = RFC3339.now().replacingOccurrences(of: ":", with: "-").prefix(19)
-        let projectURL = recordingsDirectory.appendingPathComponent("Recording \(stamp).aks")
+        let projectURL = recordingsDirectory.appendingPathComponent(
+            "Recording \(stamp).\(ProjectSchema.packageExtension)")
         guard let configuration = makeConfiguration(display: display) else {
             mode = .start
             // The reason is in statusMessage; make sure it can be seen
@@ -1215,7 +1218,7 @@ final class AppModel {
                 self.hudPanel.hide()
                 self.showMainWindow()
                 if !summary.validation.isHealthy {
-                    self.warnings.append("Validation found problems — see aks validate.")
+                    self.warnings.append("Validation found problems — see screenreel validate.")
                 }
                 self.lastRecordingHealth = summary.perf?.headline
                 for concern in summary.perf?.concerns ?? [] {
@@ -1265,7 +1268,7 @@ final class AppModel {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = recordingsDirectory
-        panel.message = "Choose a .aks project"
+        panel.message = "Choose a .screenreel project"
         if panel.runModal() == .OK, let url = panel.url {
             openProject(at: url)
         }

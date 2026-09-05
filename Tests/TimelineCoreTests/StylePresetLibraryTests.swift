@@ -12,7 +12,7 @@ final class StylePresetLibraryTests: XCTestCase {
     override func setUp() {
         super.setUp()
         fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-presets-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-presets-\(UUID().uuidString)")
             .appendingPathComponent("style-presets.json")
     }
 

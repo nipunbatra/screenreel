@@ -42,14 +42,14 @@ public enum GIFExporter {
     ) async throws -> Summary {
         let fm = FileManager.default
         if fm.fileExists(atPath: outputURL.path), !options.overwrite {
-            throw AksError.ioFailed(
+            throw ScreenreelError.ioFailed(
                 operation: "gif export", path: outputURL.path, errno: EEXIST)
         }
 
         let activity = SystemActivity(.export, reason: "GIF export")
         defer { activity.end() }
         guard options.fps > 0, options.fps <= 50 else {
-            throw AksError.invariantViolated("gif fps must be in (0, 50]")
+            throw ScreenreelError.invariantViolated("gif fps must be in (0, 50]")
         }
 
         // Decode at a modest proxy: geometry is resolution-independent and
@@ -60,7 +60,7 @@ public enum GIFExporter {
         let range = composition.trimmedRange
         let rangeDurationNs = range.endNs - range.startNs
         guard rangeDurationNs > 0 else {
-            throw AksError.invariantViolated("trimmed range is empty")
+            throw ScreenreelError.invariantViolated("trimmed range is empty")
         }
 
         // Canvas geometry mirrors StyledExporter: aspect from the edit
@@ -84,7 +84,7 @@ public enum GIFExporter {
         let projectedPixels = Double(totalFrames) * width * height
         guard projectedPixels <= pixelBudget else {
             let maxSeconds = pixelBudget / (width * height * options.fps)
-            throw AksError.invariantViolated(String(
+            throw ScreenreelError.invariantViolated(String(
                 format: "GIF export is for short clips: this range renders "
                     + "%d frames at %.0f×%.0f (too much to hold in memory). "
                     + "Trim or cut the range to ≤%.0f s, lower --height, or "
@@ -101,7 +101,7 @@ public enum GIFExporter {
             tempURL as CFURL, UTType.gif.identifier as CFString,
             totalFrames, nil)
         else {
-            throw AksError.ioFailed(
+            throw ScreenreelError.ioFailed(
                 operation: "gif create", path: tempURL.path, errno: EIO)
         }
         // Loop forever — the only sane default for a screen-demo GIF.
@@ -131,7 +131,7 @@ public enum GIFExporter {
                 composed, from: composed.extent,
                 format: .RGBA8, colorSpace: colorSpace)
             else {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "gif frame \(frameIndex) failed to rasterize")
             }
             CGImageDestinationAddImage(destination, cgImage, frameProperties)
@@ -141,13 +141,13 @@ public enum GIFExporter {
             }
         }
         guard appendedFrames > 0 else {
-            throw AksError.invariantViolated("no frames could be rendered")
+            throw ScreenreelError.invariantViolated("no frames could be rendered")
         }
 
         // A cancellation that lands during the last frame must not publish.
         try Task.checkCancellation()
         guard CGImageDestinationFinalize(destination) else {
-            throw AksError.ioFailed(
+            throw ScreenreelError.ioFailed(
                 operation: "gif finalize", path: tempURL.path, errno: EIO)
         }
         if fm.fileExists(atPath: outputURL.path) {

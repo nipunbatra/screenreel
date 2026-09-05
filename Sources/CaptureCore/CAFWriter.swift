@@ -21,7 +21,7 @@ public final class CAFWriter {
         self.sampleRate = sampleRate
         self.channels = channels
         guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
-            throw AksError.ioFailed(operation: "create caf", path: url.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "create caf", path: url.path, errno: errno)
         }
         self.handle = try FileHandle(forWritingTo: url)
         try handle.write(contentsOf: Self.header(sampleRate: sampleRate, channels: channels))

@@ -10,7 +10,7 @@ public enum Hashing {
     /// memory flat without measurable overhead.
     public static func sha256HexOfFile(at url: URL) throws -> String {
         guard let stream = InputStream(url: url) else {
-            throw AksError.ioFailed(operation: "open for hash", path: url.path, errno: ENOENT)
+            throw ScreenreelError.ioFailed(operation: "open for hash", path: url.path, errno: ENOENT)
         }
         stream.open()
         defer { stream.close() }
@@ -20,7 +20,7 @@ public enum Hashing {
         while true {
             let read = stream.read(&buffer, maxLength: bufferSize)
             if read < 0 {
-                throw AksError.ioFailed(operation: "read for hash", path: url.path, errno: EIO)
+                throw ScreenreelError.ioFailed(operation: "read for hash", path: url.path, errno: EIO)
             }
             if read == 0 { break }
             hasher.update(data: Data(bytes: buffer, count: read))

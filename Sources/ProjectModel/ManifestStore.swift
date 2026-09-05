@@ -18,7 +18,7 @@ public actor ManifestStore {
         do {
             data = try Data(contentsOf: layout.manifestURL)
         } catch {
-            throw AksError.notAProject(path: layout.root.path, reason: "manifest.json unreadable: \(error)")
+            throw ScreenreelError.notAProject(path: layout.root.path, reason: "manifest.json unreadable: \(error)")
         }
         self.layout = layout
         self.current = try Manifest.decode(from: data, path: layout.manifestURL.path)

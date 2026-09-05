@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "Aks",
+    name: "Screenreel",
     platforms: [.macOS(.v15)],
     products: [
-        .executable(name: "aks", targets: ["AksCLI"]),
-        .executable(name: "AksApp", targets: ["AksApp"]),
+        .executable(name: "screenreel", targets: ["ScreenreelCLI"]),
+        .executable(name: "ScreenreelApp", targets: ["ScreenreelApp"]),
         .library(name: "ProjectModel", targets: ["ProjectModel"]),
         .library(name: "CaptureCore", targets: ["CaptureCore"]),
         .library(name: "EventCapture", targets: ["EventCapture"]),
@@ -23,11 +23,11 @@ let package = Package(
         .target(name: "EventCapture", dependencies: ["ProjectModel", "Diagnostics"]),
         .target(name: "CaptureCore", dependencies: ["ProjectModel", "Diagnostics", "EventCapture"]),
         // App-side pure logic (preferences, hotkey presets, area-picker
-        // geometry): a library so it is unit-testable — the AksApp
+        // geometry): a library so it is unit-testable — the ScreenreelApp
         // executable target cannot be imported by tests.
         .target(name: "AppSupport"),
         .executableTarget(
-            name: "AksApp",
+            name: "ScreenreelApp",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
                 "PreviewEngine", "ExportEngine", "MotionEngine", "TimelineCore",
@@ -35,7 +35,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "AksCLI",
+            name: "ScreenreelCLI",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "Diagnostics",
                 "ExportEngine", "Captions", "TimelineCore",
@@ -88,12 +88,12 @@ let package = Package(
         ),
         .testTarget(name: "EventCaptureTests", dependencies: ["EventCapture"]),
         .testTarget(name: "LicensingTests", dependencies: ["Licensing"]),
-        .testTarget(name: "AksAppLogicTests", dependencies: ["AppSupport"]),
+        .testTarget(name: "AppLogicTests", dependencies: ["AppSupport"]),
         .testTarget(
             name: "IntegrationTests",
             dependencies: [
                 "ProjectModel", "CaptureCore", "EventCapture", "ExportEngine",
-                "PreviewEngine", "AksCLI",
+                "PreviewEngine", "ScreenreelCLI",
             ]
         ),
     ]

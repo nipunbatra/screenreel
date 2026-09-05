@@ -15,7 +15,7 @@ final class StylePresetStore {
     private static var fileURL: URL {
         FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Aks", isDirectory: true)
+            .appendingPathComponent("Screenreel", isDirectory: true)
             .appendingPathComponent("style-presets.json")
     }
 

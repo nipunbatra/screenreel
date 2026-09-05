@@ -9,7 +9,7 @@ final class LayoutPathTests: XCTestCase {
     /// captured BEFORE the package directory existed must still produce
     /// package-relative paths for files created afterwards.
     func testRelativePathSurvivesPrivateTmpStandardization() throws {
-        let root = URL(fileURLWithPath: "/private/tmp/aks-layout-\(UUID().uuidString).aks")
+        let root = URL(fileURLWithPath: "/private/tmp/screenreel-layout-\(UUID().uuidString).screenreel")
             .standardizedFileURL
         let layout = ProjectLayout(root: root)
         defer { try? FileManager.default.removeItem(at: root) }

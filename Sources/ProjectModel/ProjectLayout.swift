@@ -1,6 +1,6 @@
 import Foundation
 
-/// Canonical paths inside a `.aks` package (`docs/PROJECT_FORMAT.md` §2) and
+/// Canonical paths inside a `.screenreel` package (`docs/PROJECT_FORMAT.md` §2) and
 /// the naming scheme for segments, chunks, and descriptors.
 public struct ProjectLayout: Sendable {
     public let root: URL
@@ -90,7 +90,7 @@ public struct ProjectLayout: Sendable {
     /// Resolve a manifest-relative path, rejecting escapes.
     public func resolve(relativePath: String) throws -> URL {
         guard Manifest.isSafeRelativePath(relativePath) else {
-            throw AksError.manifestInvalid(
+            throw ScreenreelError.manifestInvalid(
                 path: root.path, reason: "unsafe relative path '\(relativePath)'")
         }
         return root.appendingPathComponent(relativePath)

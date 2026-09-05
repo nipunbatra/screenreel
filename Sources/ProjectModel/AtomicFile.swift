@@ -19,7 +19,7 @@ public enum AtomicFile {
         let fm = FileManager.default
         try? fm.removeItem(at: tmp)
         guard fm.createFile(atPath: tmp.path, contents: nil) else {
-            throw AksError.ioFailed(operation: "create", path: tmp.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "create", path: tmp.path, errno: errno)
         }
         let handle = try FileHandle(forWritingTo: tmp)
         defer { try? handle.close() }
@@ -52,14 +52,14 @@ public enum AtomicFile {
             }
         }
         guard result == 0 else {
-            throw AksError.ioFailed(operation: "rename", path: destination.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "rename", path: destination.path, errno: errno)
         }
     }
 
     public static func syncDirectory(_ directory: URL) throws {
         let fd = open(directory.path, O_RDONLY)
         guard fd >= 0 else {
-            throw AksError.ioFailed(operation: "open dir", path: directory.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "open dir", path: directory.path, errno: errno)
         }
         defer { close(fd) }
         try sync(fileDescriptor: fd, path: directory.path)
@@ -70,12 +70,12 @@ public enum AtomicFile {
             if fcntl(fileDescriptor, F_FULLFSYNC) != 0 {
                 // Some filesystems reject F_FULLFSYNC; fall back to fsync.
                 guard fsync(fileDescriptor) == 0 else {
-                    throw AksError.ioFailed(operation: "fsync", path: path, errno: errno)
+                    throw ScreenreelError.ioFailed(operation: "fsync", path: path, errno: errno)
                 }
             }
         } else {
             guard fsync(fileDescriptor) == 0 else {
-                throw AksError.ioFailed(operation: "fsync", path: path, errno: errno)
+                throw ScreenreelError.ioFailed(operation: "fsync", path: path, errno: errno)
             }
         }
     }
@@ -94,7 +94,7 @@ public final class DurableAppendFile: @unchecked Sendable {
             open(path!, O_WRONLY | O_APPEND | O_CREAT, 0o644)
         }
         guard fd >= 0 else {
-            throw AksError.ioFailed(operation: "open append", path: url.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "open append", path: url.path, errno: errno)
         }
     }
 
@@ -108,7 +108,7 @@ public final class DurableAppendFile: @unchecked Sendable {
                 let written = write(fd, buffer.baseAddress!.advanced(by: offset), buffer.count - offset)
                 if written < 0 {
                     if errno == EINTR { continue }
-                    throw AksError.ioFailed(operation: "append", path: url.path, errno: errno)
+                    throw ScreenreelError.ioFailed(operation: "append", path: url.path, errno: errno)
                 }
                 offset += written
             }

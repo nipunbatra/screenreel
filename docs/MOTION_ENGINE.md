@@ -12,7 +12,7 @@ Each conversion is derived from time-varying capture/display geometry. Cursor ho
 
 ## 2. Event time
 
-Events are recorded directly against Aks's monotonic session origin. Imported/legacy event sources must store their source origin explicitly and normalize once:
+Events are recorded directly against Screenreel's monotonic session origin. Imported/legacy event sources must store their source origin explicitly and normalize once:
 
 ```text
 eventTimeNs = sourceEventTimeNs - sourceOriginTimeNs + trackOffsetNs
@@ -76,7 +76,7 @@ Required fields:
 - semantic family (`arrow`, `ibeam`, `pointingHand`, `crosshair`, `resize…`, `unknown`);
 - optional fallback ID.
 
-If an exact sprite cannot be legally or technically captured, use an original Aks vector of the semantic family. Never guess hotspot from dimensions when a descriptor supplies it.
+If an exact sprite cannot be legally or technically captured, use an original Screenreel vector of the semantic family. Never guess hotspot from dimensions when a descriptor supplies it.
 
 ## 6. Automatic zoom generation
 

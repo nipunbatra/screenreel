@@ -18,7 +18,7 @@ final class StyledExportTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-styled-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-styled-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -29,7 +29,7 @@ final class StyledExportTests: XCTestCase {
 
     /// Full synthetic session with cursor/click events (so zooms generate).
     private func makeProject(durationNs: Int64) async throws -> URL {
-        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).aks")
+        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

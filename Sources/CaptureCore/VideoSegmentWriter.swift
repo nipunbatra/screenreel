@@ -247,7 +247,7 @@ public actor VideoSegmentWriter {
         guard appended else {
             let status = segment.writer.status
             let error = segment.writer.error.map { "\($0)" } ?? "status \(status.rawValue)"
-            throw AksError.invariantViolated("AVAssetWriter append failed: \(error)")
+            throw ScreenreelError.invariantViolated("AVAssetWriter append failed: \(error)")
         }
         segment.lastPtsNs = frame.ptsNs
         segment.lastSourceNs = frame.sourceNs
@@ -347,12 +347,12 @@ public actor VideoSegmentWriter {
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: input, sourcePixelBufferAttributes: nil)
         guard writer.canAdd(input) else {
-            throw AksError.invariantViolated("AVAssetWriter rejected video input settings")
+            throw ScreenreelError.invariantViolated("AVAssetWriter rejected video input settings")
         }
         writer.add(input)
         guard writer.startWriting() else {
             let error = writer.error.map { "\($0)" } ?? "unknown"
-            throw AksError.invariantViolated("AVAssetWriter startWriting failed: \(error)")
+            throw ScreenreelError.invariantViolated("AVAssetWriter startWriting failed: \(error)")
         }
         return Standby(
             writer: writer, input: input, adaptor: adaptor,
@@ -435,7 +435,7 @@ public actor VideoSegmentWriter {
         await segment.writer.finishWriting()
         guard segment.writer.status == .completed else {
             let error = segment.writer.error.map { "\($0)" } ?? "status \(segment.writer.status.rawValue)"
-            throw AksError.invariantViolated("segment finalization failed: \(error)")
+            throw ScreenreelError.invariantViolated("segment finalization failed: \(error)")
         }
 
         // Flush file contents to stable storage before the rename.
@@ -453,7 +453,7 @@ public actor VideoSegmentWriter {
         defer { try? FileManager.default.removeItem(at: inspectURL) }
         let probe = await AVMediaInspector().probe(url: inspectURL, container: .mov)
         guard probe.decodable else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "segment failed decode inspection: \(probe.issues.joined(separator: "; "))")
         }
 

@@ -23,7 +23,7 @@ final class AudioTimelineReader {
     init(segments: [SegmentDescriptor], layout: ProjectLayout, sampleRate: Double) throws {
         for segment in segments {
             if let rate = segment.audio?.sampleRate, abs(rate - sampleRate) > 0.5 {
-                throw AksError.invariantViolated(
+                throw ScreenreelError.invariantViolated(
                     "audio segment \(segment.path) is \(Int(rate)) Hz but the export pipeline runs at \(Int(sampleRate)) Hz; resampling is not implemented — re-record at \(Int(sampleRate)) Hz")
             }
         }

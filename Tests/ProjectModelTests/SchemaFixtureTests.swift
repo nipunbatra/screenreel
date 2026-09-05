@@ -7,7 +7,7 @@ import XCTest
 /// lives next to this file and uses byte-sized fake media so it stays small.
 ///
 /// Regenerate (only when introducing a NEW schema version, never to “fix” a
-/// failing test): AKS_REGENERATE_FIXTURES=1 swift test --filter SchemaFixtureTests
+/// failing test): SCREENREEL_REGENERATE_FIXTURES=1 swift test --filter SchemaFixtureTests
 final class SchemaFixtureTests: XCTestCase {
     private static var fixturesRoot: URL {
         URL(fileURLWithPath: #filePath)
@@ -16,7 +16,7 @@ final class SchemaFixtureTests: XCTestCase {
     }
 
     private var v1URL: URL {
-        Self.fixturesRoot.appendingPathComponent("v1/fixture-v1.aks")
+        Self.fixturesRoot.appendingPathComponent("v1/fixture-v1.screenreel")
     }
 
     override func setUp() {
@@ -30,8 +30,8 @@ final class SchemaFixtureTests: XCTestCase {
     }
 
     func testGenerateFixtureIfRequested() async throws {
-        guard ProcessInfo.processInfo.environment["AKS_REGENERATE_FIXTURES"] == "1" else {
-            throw XCTSkip("set AKS_REGENERATE_FIXTURES=1 to (re)generate")
+        guard ProcessInfo.processInfo.environment["SCREENREEL_REGENERATE_FIXTURES"] == "1" else {
+            throw XCTSkip("set SCREENREEL_REGENERATE_FIXTURES=1 to (re)generate")
         }
         try? FileManager.default.removeItem(at: v1URL)
         try FileManager.default.createDirectory(

@@ -3,7 +3,7 @@ import XCTest
 @testable import PreviewEngine
 @testable import ProjectModel
 
-/// End-to-end runs of the actual `aks` binary: exit codes, JSON output, and
+/// End-to-end runs of the actual `screenreel` binary: exit codes, JSON output, and
 /// the record → validate → export → re-validate loop a user lives in.
 final class CLITests: XCTestCase {
     private var directory: URL!
@@ -11,7 +11,7 @@ final class CLITests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-cli-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-cli-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +22,7 @@ final class CLITests: XCTestCase {
 
     private static var binary: URL {
         for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
-            return bundle.bundleURL.deletingLastPathComponent().appendingPathComponent("aks")
+            return bundle.bundleURL.deletingLastPathComponent().appendingPathComponent("screenreel")
         }
         fatalError("cannot locate build products directory")
     }
@@ -43,9 +43,9 @@ final class CLITests: XCTestCase {
 
     func testRecordValidateExportLoop() throws {
         guard FileManager.default.fileExists(atPath: Self.binary.path) else {
-            throw XCTSkip("aks binary not built next to the test bundle")
+            throw XCTSkip("screenreel binary not built next to the test bundle")
         }
-        let project = directory.appendingPathComponent("cli.aks").path
+        let project = directory.appendingPathComponent("cli.screenreel").path
 
         // Record.
         let record = try run([
@@ -93,9 +93,9 @@ final class CLITests: XCTestCase {
 
     func testValidateFailsOnCorruptedProject() throws {
         guard FileManager.default.fileExists(atPath: Self.binary.path) else {
-            throw XCTSkip("aks binary not built next to the test bundle")
+            throw XCTSkip("screenreel binary not built next to the test bundle")
         }
-        let project = directory.appendingPathComponent("corrupt.aks").path
+        let project = directory.appendingPathComponent("corrupt.screenreel").path
         let record = try run([
             "record", "--synthetic", "--duration", "6", "--pace", "4",
             "--width", "320", "--height", "180", "--output", project,
@@ -115,7 +115,7 @@ final class CLITests: XCTestCase {
 
         // Export refuses nothing here (journal intact) but recovery rejects
         // and quarantines the corrupt segment; recovered copy validates.
-        let recovered = directory.appendingPathComponent("recovered.aks").path
+        let recovered = directory.appendingPathComponent("recovered.screenreel").path
         let recover = try run(["recover", project, "--output", recovered])
         XCTAssertEqual(recover.status, 0, recover.stdout)
         let revalidate = try run(["validate", recovered])
@@ -131,9 +131,9 @@ extension CLITests {
     /// silently dropped by the store's uncaptured-kind guard.)
     func testSyntheticKeystrokesFlowIntoTheComposition() throws {
         guard FileManager.default.fileExists(atPath: Self.binary.path) else {
-            throw XCTSkip("aks binary not built next to the test bundle")
+            throw XCTSkip("screenreel binary not built next to the test bundle")
         }
-        let project = directory.appendingPathComponent("keys.aks").path
+        let project = directory.appendingPathComponent("keys.screenreel").path
 
         let record = try run([
             "record", "--synthetic", "--keystrokes", "--duration", "6",
@@ -165,7 +165,7 @@ extension CLITests {
             composition.motionTimeline.keyPresses[0].modifiers, [.command])
 
         // Control: WITHOUT the flag, no keyboard track appears.
-        let plain = directory.appendingPathComponent("plain.aks").path
+        let plain = directory.appendingPathComponent("plain.screenreel").path
         _ = try run([
             "record", "--synthetic", "--duration", "3", "--pace", "4",
             "--width", "320", "--height", "180", "--output", plain,

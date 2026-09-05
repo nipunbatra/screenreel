@@ -11,7 +11,7 @@ final class ExportTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-export-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-export-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -26,7 +26,7 @@ final class ExportTests: XCTestCase {
         micSilenceAfterNs: Int64? = nil,
         pace: Double = 4
     ) async throws -> URL {
-        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).aks")
+        let projectURL = directory.appendingPathComponent("p-\(UUID().uuidString).screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,
@@ -141,7 +141,7 @@ final class ExportTests: XCTestCase {
                 projectAt: projectURL,
                 to: directory.appendingPathComponent("damaged.mp4"))
             XCTFail("expected refusal on damaged journal")
-        } catch let error as AksError {
+        } catch let error as ScreenreelError {
             guard case .journalInvalid = error else {
                 return XCTFail("expected journalInvalid, got \(error)")
             }

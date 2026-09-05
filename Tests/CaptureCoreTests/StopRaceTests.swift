@@ -12,7 +12,7 @@ final class StopRaceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-stoprace-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-stoprace-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +22,7 @@ final class StopRaceTests: XCTestCase {
     }
 
     func testConcurrentStopsShareOneResult() async throws {
-        let projectURL = directory.appendingPathComponent("race.aks")
+        let projectURL = directory.appendingPathComponent("race.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 320, heightPx: 180, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

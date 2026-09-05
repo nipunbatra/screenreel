@@ -281,7 +281,7 @@ public actor AudioSegmentWriter {
         let size = ((try? fm.attributesOfItem(atPath: segment.partialURL.path)[.size] as? Int64) ?? nil) ?? -1
         let expectedSize = CAFWriter.pcmDataOffset + Int64(frames * channels * 4)
         guard size == expectedSize, frames > 0 else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "CAF segment failed inspection: \(size) bytes, expected \(expectedSize) "
                     + "(\(frames) frames) at \(segment.partialURL.path)")
         }

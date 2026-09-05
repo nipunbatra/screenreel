@@ -5,14 +5,14 @@
 
 ## Context
 
-The project owner needs Aks as a daily recorder immediately; the blocking gap
+The project owner needs Screenreel as a daily recorder immediately; the blocking gap
 between "recording is safe" (Milestone 0) and "I can share a video" was the
 exporter, which the roadmap schedules for Milestone 3 in its full segmented,
 checkpointed, resumable form.
 
 ## Decision
 
-Ship `aks export` now as a **raw assembly** step (`ExportEngine.SegmentAssembler`):
+Ship `screenreel export` now as a **raw assembly** step (`ExportEngine.SegmentAssembler`):
 
 1. Video is **stream-copied** from the committed segments — no decode, no
    re-encode, no generation loss, ~20× real time. Sample times are shifted

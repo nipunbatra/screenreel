@@ -9,7 +9,7 @@ Use actors for ownership of long-lived media state. Avoid funneling sample buffe
 ## 2. Layer map
 
 ```text
-AksApp
+ScreenreelApp
   ├── CaptureCoordinator ── ScreenCaptureKit / Core Audio / Event Tap
   │     └── ProjectWriter ── segment files + journal + manifest
   ├── EditorModel ───────── TimelineCore + ProjectModel
@@ -48,7 +48,7 @@ Do not subtract audio and video timestamps produced by unrelated clocks without 
 
 - Accessibility/event-tap permission is requested separately from screen recording.
 - Capture position in global display pixels, button state, event type, modifiers, pressure when available, monotonic time, cursor descriptor ID, and the active display mapping.
-- Snapshot a cursor descriptor on change: original PNG/PDF representation when legally/system available, size, scale, and hotspot. The project may also store a semantic name for an original Aks vector substitute.
+- Snapshot a cursor descriptor on change: original PNG/PDF representation when legally/system available, size, scale, and hotspot. The project may also store a semantic name for an original Screenreel vector substitute.
 - Keyboard capture is opt-in, visibly indicated, and filters password/secure-input contexts. Raw text is not captured during secure input.
 
 ### Durable writes
@@ -125,7 +125,7 @@ public protocol Exporting: Sendable {
 }
 ```
 
-No package should import SwiftUI except `AksApp` and preview UI adapters.
+No package should import SwiftUI except `ScreenreelApp` and preview UI adapters.
 
 ## 10. Diagnostics and observability
 
@@ -133,7 +133,7 @@ No package should import SwiftUI except `AksApp` and preview UI adapters.
 - Signposts for capture queues, drops, decoder latency, render latency, encode latency, segment commits, and disk throughput.
 - A user-facing diagnostic report lists app/OS/hardware versions, source formats, segment health, free space, dropped frames, A/V discontinuities, enhancement/export job state, and redacted paths.
 - Never include microphone content, frame pixels, typed keys, or unrelated filenames in diagnostics by default.
-- **Performance trace.** Every recording writes `diagnostics/perf.jsonl` — one sample per heartbeat (1 s) with this process's CPU (100 = one core), whole-machine CPU, RSS, thermal state, load average, writer frame/drop counters, and the cursor event tap's callback latency and re-enable count — and `diagnostics/perf-summary.json`, an interval-weighted digest with operator-facing concerns (drops, tap stalls, thermal throttling, CPU saturation). `aks perf <project> [--trace]` prints it; the app keeps the digest after a stop. The event tap matters here because a listen-only `CGEventTap` still sits in WindowServer's delivery path: a slow or starved callback lags every app's input, and a timed-out tap is silently disabled by macOS — the tap thread runs at user-interactive QoS and re-enables itself.
+- **Performance trace.** Every recording writes `diagnostics/perf.jsonl` — one sample per heartbeat (1 s) with this process's CPU (100 = one core), whole-machine CPU, RSS, thermal state, load average, writer frame/drop counters, and the cursor event tap's callback latency and re-enable count — and `diagnostics/perf-summary.json`, an interval-weighted digest with operator-facing concerns (drops, tap stalls, thermal throttling, CPU saturation). `screenreel perf <project> [--trace]` prints it; the app keeps the digest after a stop. The event tap matters here because a listen-only `CGEventTap` still sits in WindowServer's delivery path: a slow or starved callback lags every app's input, and a timed-out tap is silently disabled by macOS — the tap thread runs at user-interactive QoS and re-enables itself.
 - **Activity assertions.** The coordinator holds a `ProcessInfo` activity (no App Nap, no idle system or display sleep, latency-critical) for the whole recording — the app hides its window while recording, which otherwise makes it nap-eligible — and every exporter holds one for the duration of the job.
 
 ## 11. Security and privacy

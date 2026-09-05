@@ -122,7 +122,7 @@ extension JSONValue {
             out += String(i)
         case .double(let d):
             guard d.isFinite else {
-                throw AksError.invalidJSON("Non-finite number cannot be serialized to JSON")
+                throw ScreenreelError.invalidJSON("Non-finite number cannot be serialized to JSON")
             }
             // Whole doubles up to 2^53 print as integer digits: the
             // exponent form ("2e+15") reparsed as Int64 and re-serialized

@@ -18,7 +18,7 @@ final class CheckpointedExportTests: XCTestCase {
         super.setUp()
         CheckpointedExporter.segmentFloorSeconds = 2
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-ckpt-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-ckpt-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
     }

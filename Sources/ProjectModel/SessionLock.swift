@@ -21,7 +21,7 @@ public struct SessionLock: Codable, Sendable, Equatable {
         lastCommittedSequence: UInt64 = 0,
         heartbeatAt: String = RFC3339.now()
     ) {
-        self.schemaVersion = AksSchema.currentVersion
+        self.schemaVersion = ProjectSchema.currentVersion
         self.sessionID = sessionID
         self.pid = pid
         self.processStartMarker = processStartMarker

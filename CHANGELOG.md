@@ -6,7 +6,19 @@ self-contained and replace "Unreleased" with the date when cutting a release.
 
 ## 0.2.0 — Unreleased
 
-Performance diagnosis and hardening, launch fix, and distribution plumbing.
+Performance diagnosis and hardening, launch fix, the rename, and
+distribution plumbing.
+
+- **Renamed from aks to Screenreel everywhere.** CLI binary `screenreel`
+  (was `aks`), bundle identifier `com.nipunbatra.screenreel` (was
+  `in.aks.app` — macOS treats this as a new app, so Screen Recording,
+  Microphone and Input Monitoring must be granted once more), project
+  packages `.screenreel` with format id `com.nipunbatra.screenreel.project`.
+  Existing `.aks` packages and the `in.aks.project` id are read forever;
+  `~/Movies/Aks` is renamed to `~/Movies/Screenreel` on first launch.
+  Harness/test environment variables are now `SCREENREEL_*`.
+- **Metal preview.** The editor renders straight into a Metal layer (no CPU
+  readback); playback CPU on a 4K recording fell from ~41% to ~13–24%.
 
 - **Launch fix.** A signed build could launch as a bare Dock icon with no
   window: macOS restored the window state of a session that ended with the
@@ -16,7 +28,7 @@ Performance diagnosis and hardening, launch fix, and distribution plumbing.
 - **Recording performance trace.** Every recording writes
   `diagnostics/perf.jsonl` (per second: the app's CPU next to the whole
   machine's, RSS, thermal state, load, frame/drop counters, cursor-tap
-  latency) and `perf-summary.json`; `aks perf <project> --trace` prints
+  latency) and `perf-summary.json`; `screenreel perf <project> --trace` prints
   it, the CLI prints the digest at stop, and the app records a one-line
   recording health string plus `[perf]` warnings for drops, tap stalls,
   thermal throttling, and CPU saturation.
@@ -45,9 +57,9 @@ Performance diagnosis and hardening, launch fix, and distribution plumbing.
 - **Project paths.** Packages created under `/private/tmp`-style paths
   no longer journal absolute segment paths (validation used to report
   `segment.openedNotCommitted` after a clean stop).
-- **Harness.** `AKS_AUTOPILOT_DIR` runs operate on a copy of the project
+- **Harness.** `SCREENREEL_AUTOPILOT_DIR` runs operate on a copy of the project
   (they used to restyle the real recording), never trigger permission
-  prompts, and accept `AKS_AUTOPILOT_PLAY_SECONDS`.
+  prompts, and accept `SCREENREEL_AUTOPILOT_PLAY_SECONDS`.
 
 - **License keys.** New `Licensing` module: offline Ed25519-verified keys
   (`SR1-…`) carrying licensee, tier (personal/team), seats, and an
@@ -71,4 +83,4 @@ Performance diagnosis and hardening, launch fix, and distribution plumbing.
 
 Initial public release: segmented crash-safe recorder, editor with
 click-driven zooms, captions, camera PiP, styled/raw/GIF export, and the
-`aks` CLI.
+`screenreel` CLI.

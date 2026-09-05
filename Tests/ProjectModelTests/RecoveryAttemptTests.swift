@@ -13,7 +13,7 @@ final class RecoveryAttemptTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-attempt-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-attempt-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -23,7 +23,7 @@ final class RecoveryAttemptTests: XCTestCase {
         super.tearDown()
     }
 
-    private var projectURL: URL { directory.appendingPathComponent("p.aks") }
+    private var projectURL: URL { directory.appendingPathComponent("p.screenreel") }
     private var markerURL: URL {
         RecoveryAttemptMarker.url(in: ProjectLayout(root: projectURL))
     }
@@ -34,7 +34,7 @@ final class RecoveryAttemptTests: XCTestCase {
     private func blockedDestination() throws -> URL {
         let blocker = directory.appendingPathComponent("blocker")
         try Data("not a directory".utf8).write(to: blocker)
-        return blocker.appendingPathComponent("recovered.aks")
+        return blocker.appendingPathComponent("recovered.screenreel")
     }
 
     func testFailedRecoveryIsTerminalAndSecondRunRefuses() async throws {
@@ -57,14 +57,14 @@ final class RecoveryAttemptTests: XCTestCase {
         XCTAssertEqual(marker.outcome, .failed)
         XCTAssertNotNil(marker.finishedAt)
         XCTAssertNotNil(marker.error)
-        XCTAssertEqual(marker.toolVersion, AksSchema.toolVersion)
+        XCTAssertEqual(marker.toolVersion, ProjectSchema.toolVersion)
 
         // A second run — even with a perfectly good destination — refuses.
         do {
             _ = try await Recovery.recover(
                 projectAt: projectURL,
                 options: RecoveryOptions(
-                    destination: directory.appendingPathComponent("good.aks")))
+                    destination: directory.appendingPathComponent("good.screenreel")))
             XCTFail("expected alreadyAttempted")
         } catch let error as RecoveryError {
             guard case .alreadyAttempted = error else {
@@ -75,7 +75,7 @@ final class RecoveryAttemptTests: XCTestCase {
         }
         // Nothing was created by the refused run, and the marker persists.
         XCTAssertFalse(FileManager.default.fileExists(
-            atPath: directory.appendingPathComponent("good.aks").path))
+            atPath: directory.appendingPathComponent("good.screenreel").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: markerURL.path))
 
         // Validation is read-only: the marker survives it too.
@@ -86,7 +86,7 @@ final class RecoveryAttemptTests: XCTestCase {
     func testSuccessfulRecoveryClearsMarkerAndStaysRepeatable() async throws {
         try await TestProject.build(at: projectURL, finalize: false)
 
-        let firstURL = directory.appendingPathComponent("recovered-1.aks")
+        let firstURL = directory.appendingPathComponent("recovered-1.screenreel")
         _ = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: firstURL))
         XCTAssertFalse(
@@ -94,7 +94,7 @@ final class RecoveryAttemptTests: XCTestCase {
             "a successful recovery must clear the attempt marker")
 
         // Success is not terminal: a repeat run still works.
-        let secondURL = directory.appendingPathComponent("recovered-2.aks")
+        let secondURL = directory.appendingPathComponent("recovered-2.screenreel")
         _ = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: secondURL))
         XCTAssertFalse(FileManager.default.fileExists(atPath: markerURL.path))
@@ -112,7 +112,7 @@ final class RecoveryAttemptTests: XCTestCase {
         let built = try await TestProject.build(at: projectURL, finalize: false)
 
         // Occupied destination.
-        let occupied = directory.appendingPathComponent("occupied.aks")
+        let occupied = directory.appendingPathComponent("occupied.screenreel")
         try FileManager.default.createDirectory(at: occupied, withIntermediateDirectories: true)
         do {
             _ = try await Recovery.recover(
@@ -135,7 +135,7 @@ final class RecoveryAttemptTests: XCTestCase {
         stale.pid = 99999
         stale.processStartMarker = "99999:1.1"
         try stale.write(to: built.layout.sessionLockURL)
-        let recovered = directory.appendingPathComponent("after-preflight.aks")
+        let recovered = directory.appendingPathComponent("after-preflight.screenreel")
         _ = try await Recovery.recover(
             projectAt: projectURL, options: RecoveryOptions(destination: recovered))
         XCTAssertFalse(FileManager.default.fileExists(atPath: markerURL.path))
@@ -149,7 +149,7 @@ final class RecoveryAttemptTests: XCTestCase {
             _ = try await Recovery.recover(
                 projectAt: projectURL,
                 options: RecoveryOptions(
-                    destination: directory.appendingPathComponent("out.aks")))
+                    destination: directory.appendingPathComponent("out.screenreel")))
             XCTFail("expected alreadyAttempted for a corrupt marker")
         } catch let error as RecoveryError {
             guard case .alreadyAttempted = error else {

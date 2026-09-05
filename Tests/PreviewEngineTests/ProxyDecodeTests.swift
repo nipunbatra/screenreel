@@ -19,8 +19,8 @@ final class ProxyDecodeTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-proxy-\(UUID().uuidString)")
-        let projectURL = root.appendingPathComponent("p.aks")
+            .appendingPathComponent("screenreel-proxy-\(UUID().uuidString)")
+        let projectURL = root.appendingPathComponent("p.screenreel")
         layout = ProjectLayout(root: projectURL)
         for directory in layout.initialDirectories {
             try FileManager.default.createDirectory(

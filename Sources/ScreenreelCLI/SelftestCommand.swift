@@ -40,7 +40,7 @@ struct Selftest: AsyncParsableCommand {
         let temporary = output == nil
         let projectFile = output.map { projectURL(from: $0) }
             ?? FileManager.default.temporaryDirectory
-                .appendingPathComponent("aks-selftest-\(UUID().uuidString).aks")
+                .appendingPathComponent("screenreel-selftest-\(UUID().uuidString).screenreel")
 
         if !json {
             let markers = SyncSelftest.markerTimesNs(durationNs: durationNs).count

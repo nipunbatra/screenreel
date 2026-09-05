@@ -62,7 +62,7 @@ public struct EventRecord: Codable, Sendable, Equatable {
         characters: String? = nil,
         isSecureInput: Bool? = nil
     ) {
-        self.schemaVersion = AksSchema.currentVersion
+        self.schemaVersion = ProjectSchema.currentVersion
         self.sequence = sequence
         self.timeNs = timeNs
         self.type = type
@@ -152,7 +152,7 @@ public struct CursorDescriptor: Codable, Sendable, Equatable {
         imagePath: String? = nil,
         imageSHA256: String? = nil
     ) {
-        self.schemaVersion = AksSchema.currentVersion
+        self.schemaVersion = ProjectSchema.currentVersion
         self.id = id
         self.semanticFamily = semanticFamily
         self.sourceType = sourceType
@@ -176,12 +176,12 @@ extension EventRecord {
 
     public static func parse(line: Substring, lineNumber: Int) throws -> EventRecord {
         guard let data = line.data(using: .utf8), !line.isEmpty else {
-            throw AksError.invalidJSON("empty event line \(lineNumber)")
+            throw ScreenreelError.invalidJSON("empty event line \(lineNumber)")
         }
         do {
             return try JSONDecoder().decode(EventRecord.self, from: data)
         } catch {
-            throw AksError.invalidJSON("event line \(lineNumber): \(error)")
+            throw ScreenreelError.invalidJSON("event line \(lineNumber): \(error)")
         }
     }
 }

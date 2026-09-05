@@ -18,8 +18,8 @@ final class WriterPTSPathologyTests: XCTestCase {
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-ptspath-\(UUID().uuidString)")
-        layout = ProjectLayout(root: root.appendingPathComponent("p.aks"))
+            .appendingPathComponent("screenreel-ptspath-\(UUID().uuidString)")
+        layout = ProjectLayout(root: root.appendingPathComponent("p.screenreel"))
         for directory in layout.initialDirectories {
             try? FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
@@ -132,7 +132,7 @@ final class WriterPTSPathologyTests: XCTestCase {
         // Cap-map gap #5 (reduced): repeated pause/resume through the real
         // session — one discontinuity per cycle, strictly ordered segments
         // on BOTH video tracks.
-        let projectURL = root.appendingPathComponent("cycles.aks")
+        let projectURL = root.appendingPathComponent("cycles.screenreel")
         let configuration = CaptureConfiguration(
             widthPx: 160, heightPx: 90, nominalFrameRate: 30,
             videoCodec: .hevc, displayID: 1,

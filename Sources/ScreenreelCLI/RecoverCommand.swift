@@ -13,10 +13,10 @@ struct Recover: AsyncParsableCommand {
             quarantined, never deleted.
             """)
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
-    @Option(help: "Destination for the recovered package (default: sibling '<name> Recovered <time>.aks').")
+    @Option(help: "Destination for the recovered package (default: sibling '<name> Recovered <time>.screenreel').")
     var output: String?
 
     @Flag(help: "Attach valid, contiguous, unjournaled tail segments after inspection.")

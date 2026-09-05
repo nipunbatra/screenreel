@@ -2,7 +2,7 @@
 
 ## 1. Design intent
 
-Aks must make the common failure—“the lecture video exists but the lecture voice is gone”—both unlikely and recoverable. Raw microphone and system audio are independent, segmented, timestamped tracks. Enhancement is a replaceable derivative, never the recording.
+Screenreel must make the common failure—“the lecture video exists but the lecture voice is gone”—both unlikely and recoverable. Raw microphone and system audio are independent, segmented, timestamped tracks. Enhancement is a replaceable derivative, never the recording.
 
 ## 2. Capture contract
 

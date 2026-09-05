@@ -17,7 +17,7 @@ struct CaptionsExport: AsyncParsableCommand {
             (Captions → Transcribe).
             """)
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Argument(help: "Output path (default: '<project name>.srt'/'.vtt' next to the project).")

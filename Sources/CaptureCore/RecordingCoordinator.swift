@@ -210,7 +210,7 @@ public actor RecordingCoordinator {
 
     public func stop() async throws -> CaptureSession.StopSummary {
         guard let session else {
-            throw AksError.invariantViolated("stop() before start()")
+            throw ScreenreelError.invariantViolated("stop() before start()")
         }
         await closeExternalProducers()
         let summary = try await session.stop()

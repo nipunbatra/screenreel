@@ -24,7 +24,7 @@ final class FrameProviderTests: XCTestCase {
         try await super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-provider-\(UUID().uuidString).aks")
+            .appendingPathComponent("screenreel-provider-\(UUID().uuidString).screenreel")
         layout = ProjectLayout(root: directory)
         for dir in layout.initialDirectories {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

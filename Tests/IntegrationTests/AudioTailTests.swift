@@ -18,7 +18,7 @@ final class AudioTailTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-audiotail-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-audiotail-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

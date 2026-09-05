@@ -16,7 +16,7 @@ final class PreviewExportParityTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-parity-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-parity-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

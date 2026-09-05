@@ -2,7 +2,7 @@ import Foundation
 
 // Swift mirror of `Schemas/project-manifest-v1.schema.json`. Decoding is
 // strict for required fields; unknown extra fields are tolerated (additive
-// minor changes), and a `schemaVersion` above `AksSchema.currentVersion`
+// minor changes), and a `schemaVersion` above `ProjectSchema.currentVersion`
 // must be rejected by callers via `Manifest.checkReadable`.
 
 public struct Manifest: Codable, Sendable, Equatable {
@@ -31,10 +31,10 @@ public struct Manifest: Codable, Sendable, Equatable {
         durationNs: Int64? = nil,
         generation: Int = 1
     ) {
-        self.format = AksSchema.formatIdentifier
-        self.schemaVersion = AksSchema.currentVersion
+        self.format = ProjectSchema.formatIdentifier
+        self.schemaVersion = ProjectSchema.currentVersion
         self.projectID = projectID
-        self.appVersion = AksSchema.toolVersion
+        self.appVersion = ProjectSchema.toolVersion
         self.createdAt = createdAt
         self.modifiedAt = createdAt
         self.state = state
@@ -49,12 +49,12 @@ public struct Manifest: Codable, Sendable, Equatable {
     /// Throws `schemaTooNew` / `manifestInvalid` for documents this build
     /// must not interpret. Raw media stays reachable either way.
     public func checkReadable(at path: String) throws {
-        guard format == AksSchema.formatIdentifier else {
-            throw AksError.manifestInvalid(path: path, reason: "unknown format discriminator '\(format)'")
+        guard ProjectSchema.isKnownFormat(format) else {
+            throw ScreenreelError.manifestInvalid(path: path, reason: "unknown format discriminator '\(format)'")
         }
-        guard schemaVersion <= AksSchema.currentVersion else {
-            throw AksError.schemaTooNew(
-                found: schemaVersion, supported: AksSchema.currentVersion, path: path)
+        guard schemaVersion <= ProjectSchema.currentVersion else {
+            throw ScreenreelError.schemaTooNew(
+                found: schemaVersion, supported: ProjectSchema.currentVersion, path: path)
         }
     }
 }
@@ -258,7 +258,7 @@ public struct SegmentDescriptor: Codable, Sendable, Equatable {
         discontinuityBefore: Bool? = nil,
         timingEstimated: Bool? = nil,
         commitSequence: UInt64,
-        toolVersion: String = AksSchema.toolVersion
+        toolVersion: String = ProjectSchema.toolVersion
     ) {
         self.id = id
         self.trackID = trackID
@@ -328,7 +328,7 @@ public struct EventChunkDescriptor: Codable, Sendable, Equatable {
         byteSize: Int64,
         sha256: String,
         commitSequence: UInt64,
-        toolVersion: String = AksSchema.toolVersion
+        toolVersion: String = ProjectSchema.toolVersion
     ) {
         self.id = id
         self.trackID = trackID
@@ -380,21 +380,21 @@ extension Manifest {
 
     public static func decode(from data: Data, path: String) throws -> Manifest {
         if let probe = try? JSONDecoder().decode(VersionProbe.self, from: data) {
-            guard probe.format == AksSchema.formatIdentifier else {
-                throw AksError.manifestInvalid(
+            guard ProjectSchema.isKnownFormat(probe.format) else {
+                throw ScreenreelError.manifestInvalid(
                     path: path, reason: "unknown format discriminator '\(probe.format)'")
             }
-            guard probe.schemaVersion <= AksSchema.currentVersion else {
-                throw AksError.schemaTooNew(
+            guard probe.schemaVersion <= ProjectSchema.currentVersion else {
+                throw ScreenreelError.schemaTooNew(
                     found: probe.schemaVersion,
-                    supported: AksSchema.currentVersion, path: path)
+                    supported: ProjectSchema.currentVersion, path: path)
             }
         }
         let manifest: Manifest
         do {
             manifest = try JSONDecoder().decode(Manifest.self, from: data)
         } catch {
-            throw AksError.manifestInvalid(path: path, reason: "\(error)")
+            throw ScreenreelError.manifestInvalid(path: path, reason: "\(error)")
         }
         try manifest.checkReadable(at: path)
         return manifest

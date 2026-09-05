@@ -11,7 +11,7 @@ final class ClockAndCAFTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-cc-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-cc-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

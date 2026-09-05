@@ -2,7 +2,7 @@ import Foundation
 
 /// Errors thrown by ProjectModel. Every case carries enough context to be
 /// actionable in the UI and diagnostic log.
-public enum AksError: Error, Sendable, CustomStringConvertible {
+public enum ScreenreelError: Error, Sendable, CustomStringConvertible {
     case invalidJSON(String)
     case ioFailed(operation: String, path: String, errno: Int32)
     case notAProject(path: String, reason: String)
@@ -20,10 +20,10 @@ public enum AksError: Error, Sendable, CustomStringConvertible {
         case .ioFailed(let op, let path, let err):
             return "I/O failure during \(op) at \(path): \(String(cString: strerror(err))) (errno \(err))"
         case .notAProject(let path, let reason):
-            return "Not an Aks project at \(path): \(reason)"
+            return "Not an Screenreel project at \(path): \(reason)"
         case .schemaTooNew(let found, let supported, let path):
             return "Project at \(path) uses schema version \(found); this build supports up to \(supported). "
-                + "Raw media remains readable under raw/ — use a newer Aks or `aks extract`."
+                + "Raw media remains readable under raw/ — use a newer Screenreel or `screenreel extract`."
         case .manifestInvalid(let path, let reason):
             return "Manifest at \(path) is invalid: \(reason)"
         case .journalInvalid(let reason, let line):

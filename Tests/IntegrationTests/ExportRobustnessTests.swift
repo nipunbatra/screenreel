@@ -12,7 +12,7 @@ final class ExportRobustnessTests: XCTestCase {
         super.setUp()
         AtomicFile.fullFsync = false
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-export-robustness-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-export-robustness-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -127,7 +127,7 @@ final class ExportRobustnessTests: XCTestCase {
         audioStartNs: Int64?,
         audioDurationNs: Int64?
     ) async throws -> URL {
-        let projectURL = directory.appendingPathComponent("\(name).aks")
+        let projectURL = directory.appendingPathComponent("\(name).screenreel")
         let created = try await ProjectPackage.create(
             at: projectURL,
             clock: ClockAnchor(

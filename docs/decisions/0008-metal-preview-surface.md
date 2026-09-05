@@ -1,4 +1,4 @@
-# 0006 — Metal preview surface with zero CPU readback
+# 0008 — Metal preview surface with zero CPU readback
 
 Status: accepted (2026-09-05)
 

@@ -1,4 +1,4 @@
-# Aks project format
+# Screenreel project format
 
 ## 1. Goals
 
@@ -11,10 +11,10 @@
 
 ## 2. Package layout
 
-A project is a directory with the `.aks` suffix:
+A project is a directory with the `.screenreel` suffix:
 
 ```text
-Lecture 2026-08-24.aks/
+Lecture 2026-08-24.screenreel/
   manifest.json
   journal.jsonl
   session.lock
@@ -63,7 +63,7 @@ Illustrative fields (formal JSON Schema must be checked into `Schemas/` in Miles
 
 ```json
 {
-  "format": "in.aks.project",
+  "format": "com.nipunbatra.screenreel.project",
   "schemaVersion": 1,
   "projectID": "UUID",
   "createdAt": "2026-08-24T10:00:00Z",
@@ -159,4 +159,4 @@ Recovery trusts committed media and journal ordering, not the last manifest alon
 
 ## 9. Raw extraction guarantee
 
-The Finder package menu and CLI provide **Reveal raw files** and `aks extract PROJECT DESTINATION`. Extraction copies or hard-links committed screen, mic, system-audio, and camera assets plus a CSV/JSON event export. It works even when the editor cannot load the timeline.
+The Finder package menu and CLI provide **Reveal raw files** and `screenreel extract PROJECT DESTINATION`. Extraction copies or hard-links committed screen, mic, system-audio, and camera assets plus a CSV/JSON event export. It works even when the editor cannot load the timeline.

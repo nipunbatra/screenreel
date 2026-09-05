@@ -7,12 +7,12 @@ import XCTest
 @testable import ProjectModel
 
 /// Opt-in golden check against a locally kept REAL recording
-///: styled-export the pointed-at `.aks`
+///: styled-export the pointed-at `.screenreel`
 /// project, decode sampled frames, and require the preview composition to
 /// match within a mean-abs-diff threshold. Real content exercises decoder
 /// paths, cursor data, and zoom timing that synthetic fixtures cannot.
 ///
-///   AKS_REAL_RECORDING_PATH=/path/to/recording.aks \
+///   SCREENREEL_REAL_RECORDING_PATH=/path/to/recording.screenreel \
 ///     swift test --filter GoldenRealRecordingTests
 final class GoldenRealRecordingTests: XCTestCase {
     private var directory: URL!
@@ -20,7 +20,7 @@ final class GoldenRealRecordingTests: XCTestCase {
     override func setUp() {
         super.setUp()
         directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aks-golden-\(UUID().uuidString)")
+            .appendingPathComponent("screenreel-golden-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -30,14 +30,14 @@ final class GoldenRealRecordingTests: XCTestCase {
     }
 
     func testSampledExportFramesMatchPreviewOnRealRecording() async throws {
-        guard let path = ProcessInfo.processInfo.environment["AKS_REAL_RECORDING_PATH"],
+        guard let path = ProcessInfo.processInfo.environment["SCREENREEL_REAL_RECORDING_PATH"],
             !path.isEmpty
         else {
-            throw XCTSkip("set AKS_REAL_RECORDING_PATH=/path/to/recording.aks to run the golden check")
+            throw XCTSkip("set SCREENREEL_REAL_RECORDING_PATH=/path/to/recording.screenreel to run the golden check")
         }
         let projectURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         guard FileManager.default.fileExists(atPath: projectURL.path) else {
-            throw XCTSkip("AKS_REAL_RECORDING_PATH does not exist: \(projectURL.path)")
+            throw XCTSkip("SCREENREEL_REAL_RECORDING_PATH does not exist: \(projectURL.path)")
         }
 
         let fps = 30.0

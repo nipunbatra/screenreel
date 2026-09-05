@@ -14,7 +14,7 @@ struct Perf: AsyncParsableCommand {
             prints the per-second samples so a stutter can be placed in time.
             """)
 
-    @Argument(help: "Path to the .aks project package.")
+    @Argument(help: "Path to the .screenreel project package.")
     var project: String
 
     @Flag(help: "Print the per-second samples.")

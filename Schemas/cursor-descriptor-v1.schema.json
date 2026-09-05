@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aks.in/schemas/cursor-descriptor-v1.schema.json",
-  "title": "Aks cursor descriptor v1 (events/cursors/descriptor-NNNN.json)",
+  "$id": "https://screenreel.in/schemas/cursor-descriptor-v1.schema.json",
+  "title": "Screenreel cursor descriptor v1 (events/cursors/descriptor-NNNN.json)",
   "type": "object",
   "required": [
     "schemaVersion", "id", "semanticFamily", "sourceType",

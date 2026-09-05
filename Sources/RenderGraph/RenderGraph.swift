@@ -9,7 +9,7 @@ public struct RenderSnapshot: Sendable {
     public var schemaVersion: Int
     public var assetChecksums: [String]
 
-    public init(schemaVersion: Int = AksSchema.currentVersion, assetChecksums: [String] = []) {
+    public init(schemaVersion: Int = ProjectSchema.currentVersion, assetChecksums: [String] = []) {
         self.schemaVersion = schemaVersion
         self.assetChecksums = assetChecksums
     }

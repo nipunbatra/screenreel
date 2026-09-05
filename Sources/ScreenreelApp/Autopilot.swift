@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import ProjectModel
 
-/// Env-gated self-driving smoke harness: when `AKS_AUTOPILOT_DIR` is set, the
+/// Env-gated self-driving smoke harness: when `SCREENREEL_AUTOPILOT_DIR` is set, the
 /// app walks its own primary flow — start view → open project → play →
 /// restyle → export — through the exact code paths the buttons invoke,
 /// snapshotting its window to PNG at each step (self-rendering needs no
@@ -13,7 +13,7 @@ import ProjectModel
 extension AppModel {
 
     func startAutopilotIfRequested() {
-        guard let directoryPath = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_DIR"],
+        guard let directoryPath = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_DIR"],
             !autopilotStarted
         else { return }
         autopilotStarted = true
@@ -89,12 +89,12 @@ extension AppModel {
         snapshot("1-start")
         report["recents"] = "\(recentProjects.count)"
 
-        // Real-capture mode (AKS_AUTOPILOT_RECORD=seconds): drive an actual
+        // Real-capture mode (SCREENREEL_AUTOPILOT_RECORD=seconds): drive an actual
         // ScreenCaptureKit recording through the same paths the Record
         // button uses, verifying the window choreography the floating-pill
         // fix promises — main window hidden, small floating panel shown —
         // then stop, land in the editor, and validate the project.
-        if let secondsText = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_RECORD"],
+        if let secondsText = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_RECORD"],
             let seconds = Int(secondsText), seconds > 0
         {
             // NOTE: runRecordFlow returns its results instead of taking
@@ -108,7 +108,7 @@ extension AppModel {
         }
 
         // Open the project under test (explicit path, else newest recent).
-        let projectURL = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_PROJECT"]
+        let projectURL = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_PROJECT"]
             .map { URL(fileURLWithPath: $0) } ?? recentProjects.first
         guard let projectURL else {
             report["result"] = "no-project-available"
@@ -118,9 +118,9 @@ extension AppModel {
         // The harness restyles and exports the project it opens. Work on a
         // throwaway copy under the report directory so the user's real
         // recording never picks up the harness's orange gradient (it used
-        // to) — AKS_AUTOPILOT_IN_PLACE=1 keeps the old behavior.
+        // to) — SCREENREEL_AUTOPILOT_IN_PLACE=1 keeps the old behavior.
         var workingURL = projectURL
-        if ProcessInfo.processInfo.environment["AKS_AUTOPILOT_IN_PLACE"] != "1" {
+        if ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_IN_PLACE"] != "1" {
             let copyURL = directory.appendingPathComponent(projectURL.lastPathComponent)
             try? FileManager.default.removeItem(at: copyURL)
             do {
@@ -146,9 +146,9 @@ extension AppModel {
         snapshot("2-editor")
 
         // Play for a moment; the playhead and frame must advance.
-        // AKS_AUTOPILOT_PLAY_SECONDS lengthens this for performance
+        // SCREENREEL_AUTOPILOT_PLAY_SECONDS lengthens this for performance
         // sampling (CPU/GPU while the preview runs at the real window size).
-        let playSeconds = ProcessInfo.processInfo.environment["AKS_AUTOPILOT_PLAY_SECONDS"]
+        let playSeconds = ProcessInfo.processInfo.environment["SCREENREEL_AUTOPILOT_PLAY_SECONDS"]
             .flatMap(Double.init) ?? 2
         mark("play-start")
         player.play()

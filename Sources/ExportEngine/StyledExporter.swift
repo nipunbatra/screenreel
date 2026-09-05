@@ -95,7 +95,7 @@ public enum StyledExporter {
     ) async throws -> Result {
         let fm = FileManager.default
         if fm.fileExists(atPath: outputURL.path), !options.overwrite {
-            throw AksError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
+            throw ScreenreelError.ioFailed(operation: "export", path: outputURL.path, errno: EEXIST)
         }
 
         let activity = SystemActivity(.export, reason: "Styled export")
@@ -104,7 +104,7 @@ public enum StyledExporter {
         let range = options.outputRangeNs ?? composition.trimmedRange
         let rangeDurationNs = range.endNs - range.startNs
         guard rangeDurationNs > 0 else {
-            throw AksError.invariantViolated("trimmed range is empty")
+            throw ScreenreelError.invariantViolated("trimmed range is empty")
         }
 
         // Output geometry: even dimensions; canvas aspect from the edit
@@ -171,7 +171,7 @@ public enum StyledExporter {
         }
 
         guard writer.startWriting() else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "export writer failed to start: \(writer.error.map { "\($0)" } ?? "unknown")")
         }
         writer.startSession(atSourceTime: .zero)
@@ -217,18 +217,18 @@ public enum StyledExporter {
 
                 while !videoInput.isReadyForMoreMediaData {
                     if writer.status == .failed {
-                        throw AksError.invariantViolated(
+                        throw ScreenreelError.invariantViolated(
                             "export writer failed: \(writer.error.map { "\($0)" } ?? "unknown")")
                     }
                     try await Task.sleep(nanoseconds: 2_000_000)
                 }
                 guard let pool = adaptor.pixelBufferPool else {
-                    throw AksError.invariantViolated("no pixel buffer pool")
+                    throw ScreenreelError.invariantViolated("no pixel buffer pool")
                 }
                 var pixelBufferOut: CVPixelBuffer?
                 CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBufferOut)
                 guard let pixelBuffer = pixelBufferOut else {
-                    throw AksError.invariantViolated("pixel buffer allocation failed")
+                    throw ScreenreelError.invariantViolated("pixel buffer allocation failed")
                 }
                 ciContext.render(
                     composed, to: pixelBuffer,
@@ -238,7 +238,7 @@ public enum StyledExporter {
                     colorSpace: CGColorSpace(name: CGColorSpace.itur_709))
                 let pts = CMTime(value: outputNs, timescale: 1_000_000_000)
                 guard adaptor.append(pixelBuffer, withPresentationTime: pts) else {
-                    throw AksError.invariantViolated(
+                    throw ScreenreelError.invariantViolated(
                         "encode append failed: \(writer.error.map { "\($0)" } ?? "unknown")")
                 }
                 framesWritten += 1
@@ -269,18 +269,18 @@ public enum StyledExporter {
         await writer.finishWriting()
         guard writer.status == .completed else {
             try? fm.removeItem(at: partialURL)
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "export mux failed: \(writer.error.map { "\($0)" } ?? "status \(writer.status.rawValue)")")
         }
 
         // Validate before claiming success.
         let probe = await CaptureCoreInspector().probe(url: partialURL)
         guard probe.decodable, let exportedDuration = probe.durationNs else {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "exported file failed validation: \(probe.issues.joined(separator: "; "))")
         }
         if let count = probe.frameCount, count != framesWritten {
-            throw AksError.invariantViolated(
+            throw ScreenreelError.invariantViolated(
                 "exported file has \(count) frames, expected \(framesWritten)")
         }
 
@@ -366,7 +366,7 @@ public enum StyledExporter {
         guard let audioFormat = SegmentAssembler.makeAudioFormatDescription(
             sampleRate: sampleRate, channels: mixChannels)
         else {
-            throw AksError.invariantViolated("cannot create audio format description")
+            throw ScreenreelError.invariantViolated("cannot create audio format description")
         }
 
         let startFrame = Int64((Double(rangeStartNs) / 1e9 * sampleRate).rounded())

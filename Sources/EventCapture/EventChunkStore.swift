@@ -107,7 +107,7 @@ public actor EventChunkStore {
 
         // Atomic commit protocol: partial → fsync → rename → dir fsync.
         guard FileManager.default.createFile(atPath: partialURL.path, contents: nil) else {
-            throw AksError.ioFailed(operation: "create chunk", path: partialURL.path, errno: errno)
+            throw ScreenreelError.ioFailed(operation: "create chunk", path: partialURL.path, errno: errno)
         }
         let handle = try FileHandle(forWritingTo: partialURL)
         try handle.write(contentsOf: data)

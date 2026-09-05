@@ -10,7 +10,7 @@ final class PreferencesTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        suite = "in.aks.tests.preferences.\(UUID().uuidString)"
+        suite = "com.nipunbatra.screenreel.tests.preferences.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suite)
         defaults.removePersistentDomain(forName: suite)
     }
