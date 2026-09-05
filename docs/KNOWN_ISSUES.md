@@ -46,3 +46,19 @@ Tracked consciously; none violate the safety invariants. Date: 2026-08-25.
   preserved).
 - **Unmapped keycodes** (keypad, ISO/JIS extras) render as literal
   "keyNN" chips when pressed with a chording modifier.
+- **The ten-minute synthetic 4K30 gate needs a quiet machine**: the
+  synthetic source paces at 2× real time and paints 4K frames on the CPU,
+  so with several Swift builds or a saturated machine (load average well
+  above the core count) the handoff buffer overflows and the gate reports
+  dropped buffers. The same commit passes on a quiet machine; the test
+  prints its perf digest so the two cases are distinguishable
+  (`TenMinuteGate perf: … system 88%`).
+- **Developer ID signing needs an unlocked keychain**: from agent or SSH
+  sessions `codesign` fails with `errSecInternalComponent`; `make-app.sh`
+  then leaves the previous bundle in place and explains. Build releases
+  from Terminal.app or unlock the login keychain first.
+- **Harness runs cannot record**: Screen Recording permission is granted
+  per responsible process, and processes launched from developer tooling
+  inherit the tool's (denied) grant, so real capture is verified manually
+  (`docs/MANUAL_TESTS.md`).
+
