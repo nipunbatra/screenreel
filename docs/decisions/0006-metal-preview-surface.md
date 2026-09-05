@@ -78,10 +78,15 @@ evaluation"; this decision makes the app's preview surface actually Metal.
 
 ## Consequences
 
-- Playback on the reference project: app CPU 41–43 % → 13–17 %,
-  WindowServer 4.5–5.8 % → 2.7–3.0 %, GPU utilization unchanged (8–11 %),
-  effective preview rate unchanged (~27–28 fps, 441–463 frames over the
-  16.4 s recording). Remaining CPU is decode + composition, not display.
+- Playback on the reference project (4096×2304, M2 Max, 5K panel, 20 s
+  autopilot playback, `top` every ~3 s): app CPU 40.6–43.3 % → 12.7–14.1 %
+  with the display asleep, and 39.9–47.1 % → 14.5–19.6 % with the display
+  awake; effective preview rate unchanged (~28 fps, 461–465 frames over the
+  16.4 s recording). WindowServer 4.5–5.8 % → 2.8–3.0 % and GPU 8–9 % → 8–9 %
+  with the display asleep; the display-awake runs coincided with another
+  session's test/harness load (WindowServer 24–44 %, GPU 12–30 % with no
+  Screenreel running), so their WindowServer/GPU figures are not
+  attributable. Remaining app CPU is decode + composition, not display.
 - `PreviewPlayer.currentFrame` is gone; views use `hasRenderedFrame` for
   spinner/placeholder logic and never touch pixels.
 - The preview surface requires a Metal device; `MTLCreateSystemDefaultDevice`
