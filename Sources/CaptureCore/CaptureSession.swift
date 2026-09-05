@@ -1,3 +1,4 @@
+import Diagnostics
 import Foundation
 import ProjectModel
 
@@ -58,6 +59,9 @@ public actor CaptureSession {
         public let systemAudioFrames: Int
         public let cameraFrames: Int
         public let validation: ValidationReport
+        /// Per-second CPU/RSS/system-load digest of the recording plus
+        /// pipeline counters (also persisted as diagnostics/perf-summary.json).
+        public let perf: PerfSummary?
     }
 
     /// Below this the session self-stops CLEANLY rather than letting the
@@ -101,6 +105,20 @@ public actor CaptureSession {
     private var videoStallReported = false
     private var lowDiskWarned = false
     private var droppedBufferCount = 0
+
+    /// Performance trace (`diagnostics/perf.jsonl`): one sample per
+    /// heartbeat so a laggy recording can be diagnosed afterwards.
+    private let perfSampler = PerfSampler()
+    private var perfLog: CaptureLog?
+    private var perfSamples: [PerfSample] = []
+    private var perfProbe: (@Sendable () -> [String: JSONValue])?
+
+    /// Extra per-sample counters from pipelines the session does not own
+    /// (the event tap's callback latency, for instance). Called on every
+    /// heartbeat and once more at stop for the summary.
+    public func setPerfProbe(_ probe: @escaping @Sendable () -> [String: JSONValue]) {
+        perfProbe = probe
+    }
 
     public init(
         projectURL: URL,
@@ -226,6 +244,11 @@ public actor CaptureSession {
 
         self.screenSource = screen
         try await wireSources()
+        perfLog = CaptureLog(
+            url: layout.diagnosticsDirectory.appendingPathComponent("perf.jsonl"),
+            flushEvery: 5)
+        // Baseline sample: later samples report rates relative to it.
+        perfSamples.append(perfSampler.sample())
         startHeartbeat()
     }
 
@@ -305,6 +328,26 @@ public actor CaptureSession {
         try await journal.append(
             type: .sessionStopped, timeNs: stopTimeNs, payload: JournalPayload.empty())
 
+        // Close the perf trace: a final sample, the pipeline counters, and
+        // a digest the operator can read without opening the JSONL.
+        perfSamples.append(perfSampler.sample())
+        var counters = perfProbe?() ?? [:]
+        counters["videoFrames"] = .integer(Int64(await videoWriter?.totalFrames ?? 0))
+        counters["droppedVideoFrames"] = .integer(Int64(await videoWriter?.droppedFrames ?? 0))
+        counters["droppedBuffers"] = .integer(Int64(droppedBufferCount))
+        if let cameraWriter {
+            counters["cameraFrames"] = .integer(Int64(await cameraWriter.totalFrames))
+        }
+        let perfSummary = PerfSummary.summarize(perfSamples, counters: counters)
+        await perfLog?.flush()
+        let perfEncoder = JSONEncoder()
+        perfEncoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? perfEncoder.encode(perfSummary) {
+            try? data.write(
+                to: layout.diagnosticsDirectory.appendingPathComponent("perf-summary.json"),
+                options: .atomic)
+        }
+
         // Update duration; final state depends on validation below.
         let manifest = try await manifestStore.save { manifest in
             manifest.state = .ready
@@ -352,7 +395,8 @@ public actor CaptureSession {
             micFrames: await micWriter?.totalFrames ?? 0,
             systemAudioFrames: await systemWriter?.totalFrames ?? 0,
             cameraFrames: await cameraWriter?.totalFrames ?? 0,
-            validation: report)
+            validation: report,
+            perf: perfSummary)
         finishedSummary = summary
         return summary
     }
@@ -620,6 +664,19 @@ public actor CaptureSession {
         guard !stopping else { return }
         let lock = SessionLock(sessionID: sessionID, lastCommittedSequence: lastCommitted)
         try? lock.write(to: layout.sessionLockURL, durable: false)
+
+        // Perf trace point: our process next to the whole machine, plus
+        // whatever the probe reports (tap latency), plus writer counters.
+        let sample = perfSampler.sample()
+        perfSamples.append(sample)
+        var fields = sample.fields
+        for (key, value) in perfProbe?() ?? [:] { fields[key] = value }
+        if let videoWriter {
+            fields["videoFrames"] = .integer(Int64(await videoWriter.totalFrames))
+            fields["droppedVideoFrames"] = .integer(Int64(await videoWriter.droppedFrames))
+        }
+        fields["droppedBuffers"] = .integer(Int64(droppedBufferCount))
+        await perfLog?.log(.info, "perf", timeNs: clock.nowNs(), fields: fields)
 
         // Mic-absence gate: warn within two seconds and journal the fault
         // (`docs/AUDIO_PIPELINE.md` §2).

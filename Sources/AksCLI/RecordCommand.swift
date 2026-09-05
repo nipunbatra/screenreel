@@ -265,6 +265,7 @@ struct Record: AsyncParsableCommand {
                     captureKeyboard: keystrokes)
                 try source.start()
                 tap = source
+                await session.setPerfProbe { source.perfCounters() }
                 eventPump = Task { [session] in
                     for await record in stream {
                         do {
@@ -329,6 +330,12 @@ struct Record: AsyncParsableCommand {
         }
         if summary.systemAudioFrames > 0 {
             print("System audio samples: \(summary.systemAudioFrames)")
+        }
+        if let perf = summary.perf {
+            print("Performance: \(perf.headline)")
+            for concern in perf.concerns {
+                print("  PERF \(concern)")
+            }
         }
         let state = summary.validation.isHealthy ? "healthy" : "NEEDS ATTENTION"
         print("Validation: \(state) (\(summary.validation.issues.count) issue(s))")

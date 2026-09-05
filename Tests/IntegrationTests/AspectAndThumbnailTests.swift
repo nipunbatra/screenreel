@@ -75,9 +75,28 @@ final class AspectAndThumbnailTests: XCTestCase {
         // Destroy the journal: composition must refuse, thumbnailer must
         // degrade to nil.
         let journal = ProjectLayout(root: projectURL).journalURL
+        let goodJournal = try Data(contentsOf: journal)
         try Data("garbage".utf8).write(to: journal)
         let thumbnail = await ProjectThumbnailer.thumbnail(for: projectURL, height: 120)
         XCTAssertNil(thumbnail)
+
+        // The failure is remembered: the browser must not re-parse a
+        // damaged project on every launch. Same stamp → marker untouched.
+        let marker = ProjectThumbnailer.failureMarkerURL(for: projectURL, height: 120)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path))
+        let stamp = try String(contentsOf: marker, encoding: .utf8)
+        let again = await ProjectThumbnailer.thumbnail(for: projectURL, height: 120)
+        XCTAssertNil(again)
+        XCTAssertEqual(try String(contentsOf: marker, encoding: .utf8), stamp)
+
+        // Repairing the journal (a newer file) retries and succeeds — and
+        // the marker goes away with the success.
+        try Data(goodJournal).write(to: journal)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(5)], ofItemAtPath: journal.path)
+        let repaired = await ProjectThumbnailer.thumbnail(for: projectURL, height: 120)
+        XCTAssertNotNil(repaired)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
 
         // A directory that is not a project at all.
         let notAProject = directory.appendingPathComponent("not-a-project.aks")

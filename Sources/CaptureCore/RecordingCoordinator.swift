@@ -148,6 +148,8 @@ public actor RecordingCoordinator {
         try source.start()
         self.tap = source
         self.eventsActive = true
+        // Tap health rides along in the per-second perf trace.
+        await session.setPerfProbe { source.perfCounters() }
         let warn = onWarning
         self.eventPump = Task { [session] in
             for await record in stream {

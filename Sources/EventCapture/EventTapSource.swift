@@ -42,6 +42,68 @@ public final class EventTapSource: @unchecked Sendable {
         return currentCursorIDLocked
     }
 
+    /// Tap-callback health. The tap sits in WindowServer's event delivery
+    /// path: even a listen-only tap delays every app's input until its
+    /// callback returns, and macOS disables a tap whose callback stalls.
+    /// These counters make that visible in the recording's diagnostics.
+    public struct Stats: Sendable, Equatable {
+        public var events = 0
+        public var maxCallbackNs: Int64 = 0
+        public var totalCallbackNs: Int64 = 0
+        /// Times macOS disabled the tap (timeout / user input) and we
+        /// re-enabled it. Each one is a gap in cursor data.
+        public var reenables = 0
+        public var averageCallbackNs: Int64 {
+            events > 0 ? totalCallbackNs / Int64(events) : 0
+        }
+        public init() {}
+    }
+    private let statsLock = NSLock()
+    private var statsLocked = Stats()
+
+    public func stats() -> Stats {
+        statsLock.lock()
+        defer { statsLock.unlock() }
+        return statsLocked
+    }
+
+    /// Stats as perf-trace counters (`diagnostics/perf.jsonl` fields).
+    public func perfCounters() -> [String: JSONValue] {
+        let s = stats()
+        return [
+            "tapEvents": .integer(Int64(s.events)),
+            "tapMaxCallbackUs": .integer(s.maxCallbackNs / 1000),
+            "tapAvgCallbackUs": .integer(s.averageCallbackNs / 1000),
+            "tapReenables": .integer(Int64(s.reenables)),
+        ]
+    }
+
+    private func noteCallback(ns: Int64) {
+        statsLock.lock()
+        statsLocked.events += 1
+        statsLocked.totalCallbackNs += ns
+        if ns > statsLocked.maxCallbackNs { statsLocked.maxCallbackNs = ns }
+        statsLock.unlock()
+    }
+
+    /// macOS turned the tap off (callback too slow, or a secure-input
+    /// transition). Turn it back on: a silently dead tap records nothing
+    /// for the rest of the session, which is far worse than a gap.
+    private func reenableTap() {
+        if let tap = tapPort {
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+        statsLock.lock()
+        statsLocked.reenables += 1
+        statsLock.unlock()
+    }
+
+    /// Display geometry for the last event, reused while the pointer stays
+    /// on that display (refreshed every 2 s in case of reconfiguration).
+    /// Only the tap thread touches it. Keeps the per-event work to a
+    /// bounds check instead of three Quartz display queries.
+    private var cachedDisplay: (id: CGDirectDisplayID, bounds: CGRect, scale: Double, atNs: Int64)?
+
     /// `scaleOverride` replaces the display's backing scale in the
     /// points→pixels conversion. Pass the *capture* scale when recording at
     /// non-native resolution (for example 1 when capturing at 1×), so event
@@ -104,7 +166,14 @@ public final class EventTapSource: @unchecked Sendable {
             callback: { _, type, event, userInfo in
                 guard let userInfo else { return Unmanaged.passUnretained(event) }
                 let source = Unmanaged<EventTapSource>.fromOpaque(userInfo).takeUnretainedValue()
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    source.reenableTap()
+                    return Unmanaged.passUnretained(event)
+                }
+                let startNs = Int64(clock_gettime_nsec_np(CLOCK_UPTIME_RAW))
                 source.handle(type: type, event: event)
+                source.noteCallback(
+                    ns: Int64(clock_gettime_nsec_np(CLOCK_UPTIME_RAW)) - startNs)
                 return Unmanaged.passUnretained(event)
             },
             userInfo: context)
@@ -125,6 +194,10 @@ public final class EventTapSource: @unchecked Sendable {
             CFRunLoopRun()
         }
         thread.name = "aks.event-tap"
+        // The callback gates WindowServer's event delivery for EVERY app;
+        // on a loaded machine a default-priority thread gets starved and
+        // the whole system's pointer stutters (and the tap times out).
+        thread.qualityOfService = .userInteractive
         thread.start()
         runLoopThread = thread
 
@@ -185,9 +258,22 @@ public final class EventTapSource: @unchecked Sendable {
             return
         }
         let location = event.location
-        guard let display = Self.display(containing: location) else { return }
-        let bounds = CGDisplayBounds(display)
-        let scale = scaleOverride ?? Self.backingScale(of: display)
+        let display: CGDirectDisplayID
+        let bounds: CGRect
+        let scale: Double
+        if let cached = cachedDisplay, cached.bounds.contains(location),
+            timeNs - cached.atNs < 2_000_000_000
+        {
+            display = cached.id
+            bounds = cached.bounds
+            scale = cached.scale
+        } else {
+            guard let found = Self.display(containing: location) else { return }
+            display = found
+            bounds = CGDisplayBounds(found)
+            scale = scaleOverride ?? Self.backingScale(of: found)
+            cachedDisplay = (found, bounds, scale, timeNs)
+        }
         // Display-local physical pixels (ADR 0004): subtract the display
         // origin before scaling, or coordinates on any non-origin display
         // would be permanently wrong.

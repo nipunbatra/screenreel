@@ -85,6 +85,9 @@ final class AppModel {
     }
 
     var recentProjects: [URL] = []
+    /// One-line perf digest of the last recording (CPU, system load,
+    /// drops, tap latency) — the answer to "why was that laggy?".
+    var lastRecordingHealth: String?
     var autopilotStarted = false
     var needsRelaunch = false
     var screenPermission: ScreenPermissionState = .denied
@@ -244,9 +247,16 @@ final class AppModel {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.refreshDisplays()
-                // Resume the live previews the resign handler paused.
+                // Resume the live previews the resign handler paused. If
+                // they never stopped (activation without a resign, e.g. a
+                // sheet closing), just refresh: restarting tore down and
+                // re-opened the camera preview session on every activation.
                 if case .start = self.mode {
-                    self.startSourcePreviews()
+                    if self.previewsActive {
+                        self.scheduleSourcePreviewRefresh()
+                    } else {
+                        self.startSourcePreviews()
+                    }
                     if self.microphoneEnabled { self.micMonitor.start() }
                 }
             }
@@ -447,9 +457,24 @@ final class AppModel {
     /// Refresh loop for the "what will I record" thumbnail. Runs only while
     /// the start view is visible.
     private var previewRefreshObservers: [NSObjectProtocol] = []
+    private(set) var previewsActive = false
+    private var previewRefreshDebounce: Task<Void, Never>?
+
+    /// Coalesce the burst of notifications one activation produces
+    /// (didBecomeActive + didBecomeKey + the view's onChange) into a single
+    /// WindowServer screenshot request.
+    func scheduleSourcePreviewRefresh() {
+        previewRefreshDebounce?.cancel()
+        previewRefreshDebounce = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            await self?.refreshSourcePreviewOnce()
+        }
+    }
 
     func startSourcePreviews() {
         stopSourcePreviews()
+        previewsActive = true
         // The preview is a framing aid, not a video feed. The old loop
         // asked WindowServer for a full-display screenshot every 2.5 s the
         // whole time the picker was open — each one forces a full-res
@@ -467,7 +492,7 @@ final class AppModel {
             previewRefreshObservers.append(
                 center.addObserver(forName: name, object: nil, queue: .main) { _ in
                     Task { @MainActor [weak self] in
-                        await self?.refreshSourcePreviewOnce()
+                        self?.scheduleSourcePreviewRefresh()
                     }
                 })
         }
@@ -475,6 +500,9 @@ final class AppModel {
     }
 
     func stopSourcePreviews() {
+        previewsActive = false
+        previewRefreshDebounce?.cancel()
+        previewRefreshDebounce = nil
         for observer in previewRefreshObservers {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -506,6 +534,14 @@ final class AppModel {
                 ?? AVCaptureDevice.default(for: .video)
         else {
             teardownCameraPreviewSession()
+            return
+        }
+        // Same device already previewing: keep it. Re-opening the camera
+        // costs ~1 s of device warm-up and a visible LED flicker.
+        if let running = previewCameraSession,
+            let input = running.inputs.first as? AVCaptureDeviceInput,
+            input.device.uniqueID == device.uniqueID
+        {
             return
         }
         teardownCameraPreviewSession()
@@ -852,6 +888,10 @@ final class AppModel {
                 NSApplication.shared.activate()
                 if !summary.validation.isHealthy {
                     self.warnings.append("Validation found problems — see aks validate.")
+                }
+                self.lastRecordingHealth = summary.perf?.headline
+                for concern in summary.perf?.concerns ?? [] {
+                    self.warnings.append("[perf] \(concern)")
                 }
                 self.refreshRecents()
                 self.openProject(at: summary.projectURL)

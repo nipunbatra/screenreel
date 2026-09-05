@@ -10,8 +10,14 @@ OUT="${1:-dist}"
 APP_NAME="${APP_NAME:-Screenreel}"
 swift build -c release --product AksApp
 
-APP="$OUT/${APP_NAME}.app"
-rm -rf "$APP"
+# Assemble in a staging directory and swap in only after signing succeeds:
+# a failed sign used to leave a half-built, ad-hoc-signed bundle in place —
+# which silently invalidates every TCC grant the previous build had.
+FINAL_APP="$OUT/${APP_NAME}.app"
+STAGE="$OUT/.stage.$$"
+rm -rf "$STAGE"
+APP="$STAGE/${APP_NAME}.app"
+trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$APP/Contents/MacOS"
 cp .build/release/AksApp "$APP/Contents/MacOS/${APP_NAME}"
 
@@ -77,9 +83,24 @@ if [ -z "$IDENTITY" ]; then
 fi
 if [ -n "$IDENTITY" ]; then
     echo "Signing with: $IDENTITY"
-    codesign --force --deep --options runtime --entitlements "$ENTITLEMENTS" \
-        --sign "$IDENTITY" "$APP" 2>/dev/null \
-        || codesign --force --deep --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP"
+    if ! codesign --force --deep --options runtime --entitlements "$ENTITLEMENTS" \
+        --sign "$IDENTITY" "$APP" 2>"$STAGE/codesign.err"; then
+        cat "$STAGE/codesign.err" >&2
+        if [ "${ALLOW_ADHOC:-0}" = "1" ]; then
+            echo "Developer ID signing failed; ALLOW_ADHOC=1 so signing ad-hoc (test bundle only)."
+            codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$APP"
+        else
+            cat >&2 <<MSG
+ERROR: Developer ID signing failed. 'errSecInternalComponent' means codesign could
+not use the signing key — usually the login keychain is locked or this shell has no
+keychain UI session. Fix: run this script from Terminal.app (approve the keychain
+prompt), or first run:  security unlock-keychain ~/Library/Keychains/login.keychain-db
+The previous bundle at $FINAL_APP was left untouched. For a throwaway test bundle:
+ALLOW_ADHOC=1 $0 <other-output-dir>
+MSG
+            exit 1
+        fi
+    fi
 else
     echo "No signing identity found; using ad-hoc (permissions reset every rebuild)"
     codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$APP"
@@ -88,5 +109,13 @@ rm -f "$ENTITLEMENTS"
 codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "device.camera" \
     && echo "Entitlements verified: camera + audio-input" \
     || echo "WARNING: entitlements missing from signature"
+
+# Swap in atomically, keeping the last good bundle one step back.
+if [ -d "$FINAL_APP" ]; then
+    rm -rf "$FINAL_APP.previous"
+    mv "$FINAL_APP" "$FINAL_APP.previous"
+fi
+mv "$APP" "$FINAL_APP"
+APP="$FINAL_APP"
 echo "Built $APP"
 echo "First launch: grant Screen Recording + Microphone + Input Monitoring in System Settings when prompted."
