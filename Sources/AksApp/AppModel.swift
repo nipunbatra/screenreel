@@ -117,6 +117,13 @@ final class AppModel {
     var projectCards: [ProjectCard] = []
 
     init() {
+        // Harness launches (AKS_AUTOPILOT_DIR) must never pop a system
+        // permission dialog on the user's screen: leave the microphone
+        // meter and camera off so no AVFoundation access request fires.
+        if ProcessInfo.processInfo.environment["AKS_AUTOPILOT_DIR"] != nil {
+            microphoneEnabled = false
+            cameraEnabled = false
+        }
         refreshDisplays()
         refreshRecents()
         startActivationRefresh()
