@@ -15,9 +15,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-dist}"
-# Display name is rebrandable (APP_NAME="Drishya" Scripts/make-app.sh);
+# Display name is rebrandable (APP_NAME="Screen Reel" Scripts/make-app.sh);
 # bundle id and project format identifiers stay stable on purpose.
-APP_NAME="${APP_NAME:-Screenreel}"
+APP_NAME="${APP_NAME:-Screen Reel}"
 # The single source of truth for the version is the VERSION file; it becomes
 # CFBundleShortVersionString and CFBundleVersion, and release.sh tags v$VERSION.
 VERSION="$(tr -d '[:space:]' < VERSION)"
@@ -29,7 +29,9 @@ ALLOW_ADHOC="${ALLOW_ADHOC:-0}"
 if [ "$REQUIRE_DEVELOPER_ID" = "1" ] && [ "$ALLOW_ADHOC" = "1" ]; then
     echo "REQUIRE_DEVELOPER_ID=1 and ALLOW_ADHOC=1 contradict each other" >&2; exit 1
 fi
-swift build -c release --product ScreenreelApp
+BUILD_PATH="${BUILD_PATH:-.build/distribution}"
+swift build -c release --scratch-path "$BUILD_PATH" --product ScreenreelApp --jobs "${BUILD_JOBS:-2}"
+BIN_PATH="$(swift build -c release --scratch-path "$BUILD_PATH" --show-bin-path)"
 
 # Assemble in a staging directory and swap in only after signing succeeds.
 FINAL_APP="$OUT/${APP_NAME}.app"
@@ -38,7 +40,7 @@ rm -rf "$STAGE"
 APP="$STAGE/${APP_NAME}.app"
 trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$APP/Contents/MacOS"
-cp .build/release/ScreenreelApp "$APP/Contents/MacOS/${APP_NAME}"
+cp "$BIN_PATH/ScreenreelApp" "$APP/Contents/MacOS/${APP_NAME}"
 
 # App icon: Assets/AppIcon.icns is the committed build of Assets/AppIcon.svg
 # (Scripts/make-icons.sh, see docs/BRAND.md). If it is missing, build it into
@@ -46,6 +48,7 @@ cp .build/release/ScreenreelApp "$APP/Contents/MacOS/${APP_NAME}"
 ICON_CACHE="Assets/AppIcon.icns"
 
 # Menu-bar status item glyph (template image: black + alpha, AppKit tints it).
+mkdir -p "$APP/Contents/Resources"
 for f in Assets/MenuBarIconTemplate.png Assets/MenuBarIconTemplate@2x.png; do
     [ -f "$f" ] && cp "$f" "$APP/Contents/Resources/"
 done

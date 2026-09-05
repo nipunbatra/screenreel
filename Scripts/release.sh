@@ -13,11 +13,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP_NAME="${APP_NAME:-Screenreel}"
+APP_NAME="${APP_NAME:-Screen Reel}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-screenreel}"
 VERSION="$(tr -d '[:space:]' < VERSION)"
 TAG="v$VERSION"
-DMG="dist/${APP_NAME}-${VERSION}.dmg"
-LATEST_ALIAS="dist/${APP_NAME}.dmg"   # stable name → .../releases/latest/download/Screenreel.dmg
+DMG="dist/${ARTIFACT_NAME}-${VERSION}.dmg"
+LATEST_ALIAS="dist/${ARTIFACT_NAME}.dmg"   # stable, space-free download name
 DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
 
@@ -34,8 +35,12 @@ xcrun stapler validate "$DMG" >/dev/null 2>&1 \
 # The DMG must have been built from this exact VERSION.
 MOUNT="$(mktemp -d)"
 hdiutil attach "$DMG" -mountpoint "$MOUNT" -nobrowse -quiet
+trap 'hdiutil detach "$MOUNT" -quiet || true' EXIT
 BUNDLED=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$MOUNT/${APP_NAME}.app/Contents/Info.plist")
+codesign --verify --deep --strict "$MOUNT/${APP_NAME}.app"
+spctl --assess --type execute "$MOUNT/${APP_NAME}.app"
 hdiutil detach "$MOUNT" -quiet
+trap - EXIT
 [ "$BUNDLED" = "$VERSION" ] || fail "DMG contains version $BUNDLED but VERSION is $VERSION"
 
 [ -z "$(git status --porcelain)" ] || fail "working tree is not clean"
@@ -56,7 +61,7 @@ grep -qi "unreleased" "$NOTES" && fail "CHANGELOG.md section for $VERSION still 
 grep -qi "unreleased" <(grep "^## $VERSION" CHANGELOG.md) && fail "CHANGELOG.md heading for $VERSION still says 'Unreleased'"
 
 cp -f "$DMG" "$LATEST_ALIAS"
-cp -f "$DMG.sha256" "$DMG.sha256.txt" 2>/dev/null || shasum -a 256 "$DMG" > "$DMG.sha256.txt"
+(cd "$(dirname "$DMG")" && shasum -a 256 "$(basename "$DMG")") > "$DMG.sha256.txt"
 
 echo "Release $TAG of $APP_NAME"
 echo "  DMG:   $DMG ($(du -h "$DMG" | cut -f1))"

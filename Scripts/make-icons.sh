@@ -8,7 +8,7 @@
 #
 # Sources (edit these, then re-run; see docs/BRAND.md):
 #   Assets/AppIcon.svg          app icon, 1024 canvas, Apple's 824 px stage
-#   Assets/AppIcon-small.svg    16/32 px variant (no pane detail, coral tail)
+#   Assets/AppIcon-small.svg    16/32 px variant (no outer shadow)
 #   Assets/MenuBarIcon.svg      18 pt monochrome menu-bar mark (template)
 #   Assets/brand/wordmark.svg   horizontal lockup
 #   Assets/brand/og-image.svg   1200x630 Open Graph card

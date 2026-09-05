@@ -11,10 +11,19 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP_NAME="${APP_NAME:-Screenreel}"
+APP_NAME="${APP_NAME:-Screen Reel}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-screenreel}"
 VERSION="$(tr -d '[:space:]' < VERSION)"
 PROFILE="${NOTARY_PROFILE:-screenreel-notary}"
-DMG="${1:-dist/${APP_NAME}-${VERSION}.dmg}"
+NOTARY_AUTH=(--keychain-profile "$PROFILE")
+# Shared App Store Connect credentials also work in unattended builds.
+# Read the existing key in place; never copy it into the project or logs.
+if [ -n "${NOTARY_KEY_PATH:-}" ]; then
+    : "${NOTARY_KEY_ID:?Set NOTARY_KEY_ID with NOTARY_KEY_PATH}"
+    : "${NOTARY_ISSUER_ID:?Set NOTARY_ISSUER_ID with NOTARY_KEY_PATH}"
+    NOTARY_AUTH=(--key "$NOTARY_KEY_PATH" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+fi
+DMG="${1:-dist/${ARTIFACT_NAME}-${VERSION}.dmg}"
 
 [ -f "$DMG" ] || { echo "ERROR: $DMG not found — run Scripts/make-dmg.sh first" >&2; exit 1; }
 case "$DMG" in
@@ -25,17 +34,22 @@ xcrun --find stapler >/dev/null 2>&1 || { echo "ERROR: stapler not found" >&2; e
 
 # Refuse early if the DMG is not Developer ID signed — Apple would reject it
 # after a long upload anyway.
-if ! codesign --verify --verbose=2 "$DMG" 2>&1 | grep -q "valid on disk"; then
+if ! codesign --verify --verbose=2 "$DMG"; then
     echo "ERROR: $DMG is not validly signed; rebuild with Scripts/make-dmg.sh" >&2
     exit 1
 fi
-if ! codesign -dvv "$DMG" 2>&1 | grep -q "Authority=Developer ID Application"; then
+SIGNATURE_INFO="$(codesign -dvv "$DMG" 2>&1)"
+if [[ "$SIGNATURE_INFO" != *"Authority=Developer ID Application"* ]]; then
     echo "ERROR: $DMG is not signed with a Developer ID Application certificate" >&2
     exit 1
 fi
 
-# Confirm the keychain profile exists before uploading anything.
-if ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
+# Confirm the selected existing credentials work before uploading anything.
+if ! xcrun notarytool history "${NOTARY_AUTH[@]}" >/dev/null 2>&1; then
+    if [ -n "${NOTARY_KEY_PATH:-}" ]; then
+        echo "ERROR: App Store Connect notarization credentials could not authenticate. Check the key path, key ID and issuer ID." >&2
+        exit 1
+    fi
     cat >&2 <<MSG
 ERROR: notarytool keychain profile '$PROFILE' is missing or the keychain is locked.
   Create it once with:
@@ -46,9 +60,9 @@ MSG
     exit 1
 fi
 
-echo "Submitting $DMG for notarization (profile: $PROFILE)…"
+echo "Submitting $DMG for notarization…"
 LOG="$(mktemp -t notarize).json"
-if ! xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait --output-format json > "$LOG"; then
+if ! xcrun notarytool submit "$DMG" "${NOTARY_AUTH[@]}" --wait --output-format json > "$LOG"; then
     echo "ERROR: notarytool submit failed; output:" >&2
     cat "$LOG" >&2
     exit 1
@@ -58,7 +72,7 @@ SUBMISSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get
 echo "Submission $SUBMISSION: $STATUS"
 if [ "$STATUS" != "Accepted" ]; then
     echo "ERROR: notarization was not accepted. Full log:" >&2
-    xcrun notarytool log "$SUBMISSION" --keychain-profile "$PROFILE" >&2 || true
+    xcrun notarytool log "$SUBMISSION" "${NOTARY_AUTH[@]}" >&2 || true
     exit 1
 fi
 
@@ -78,6 +92,6 @@ codesign --verify --deep --strict --verbose=2 "$MOUNT/${APP_NAME}.app"
 hdiutil detach "$MOUNT" -quiet
 trap - EXIT
 
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+(cd "$(dirname "$DMG")" && shasum -a 256 "$(basename "$DMG")") | tee "$DMG.sha256"
 echo "Notarized and stapled: $DMG"
 echo "Next: Scripts/release.sh"

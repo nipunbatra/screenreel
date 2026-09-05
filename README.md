@@ -1,19 +1,23 @@
-# Screenreel
+# Screen Reel
 
-**An open-source, Mac-native recording studio: automatic zooms, cuts, captions, and camera scenes — computed on your Mac, on top of a recorder that never loses a take.**
+**Record clearly. Make it yours.** A native Mac screen recorder with editable zooms, cursor motion, captions, camera layouts, and local voice cleanup.
 
-Screenreel pairs studio-grade visual polish with a fully local, open workflow, built on a render pipeline that finishes a 30–90 minute 4K lecture without losing its audio, cursor, or project state. The app installs as **Screenreel.app** (bundle id `com.nipunbatra.screenreel`) and records `.screenreel` packages; packages made by the earlier builds, when the project was called *aks* (`.aks`, format id `in.aks.project`), open unchanged, and the recordings folder migrates from `~/Movies/Aks` to `~/Movies/Screenreel` on first launch. Everything here is a fresh implementation — original code, original artwork.
+Screen Reel keeps the original screen, voice, system audio, camera, and cursor data separate. A project is an open folder of standard media and readable metadata. No account or cloud service is needed. The code is MIT licensed.
+
+The app builds as **Screen Reel.app**; its command is **`screenreel`**. The bundle ID (`com.nipunbatra.screenreel`), `.screenreel` project extension, and `~/Movies/Screenreel` storage location stay stable. Legacy `.aks` packages remain readable, and the existing migration from `~/Movies/Aks` is preserved.
+
+[Website](https://nipunbatra.github.io/screenreel/) · [Project format](docs/PROJECT_FORMAT.md) · [Build and sign](docs/DISTRIBUTION.md) · [Current improvement checkpoint](docs/IMPROVEMENT_HANDOFF.md)
 
 ## Product promise
 
 1. **Safe before stylish.** Screen, microphone, system audio, camera, cursor events, clicks, and metadata are persisted as separate recoverable assets while recording.
 2. **Polish stays editable.** Cursor smoothing, click effects, zooms, backgrounds, padding, corners, shadows, masks, and captions are non-destructive project data.
 3. **Fast preview, dependable export.** Editing uses proxies and reduced effects. Final export is deterministic, hardware accelerated, checkpointed, cancellable, and resumable.
-4. **The project is open.** A project is a documented folder/package. Even if Screenreel will not launch, the raw media can be opened with ordinary tools.
+4. **The project is open.** A project is a documented folder/package. Even if Screen Reel will not launch, the raw media can be opened with ordinary tools.
 
-## First release
+## Features
 
-Screenreel v0.1 is Mac-first and local-first:
+Screen Reel is built for local recording and editing on macOS:
 
 - record a display, window, or area with microphone and system audio;
 - capture cursor shape, hotspot, movement, clicks, and optional keyboard events separately;
@@ -52,7 +56,7 @@ All code in this repository is original and MIT-licensed. Contributions must not
 
 ## Privacy
 
-Screenreel needs no account and sends no telemetry. Recordings, transcripts,
+Screen Reel needs no account and sends no telemetry. Recordings, transcripts,
 captions, and exports are produced and stay on your Mac. License keys are
 verified offline with a public key embedded in the app.
 
@@ -67,28 +71,24 @@ the `screenreel` CLI opens a connection.
 
 ## Download and distribution
 
-Signed, notarized builds are published on
-[GitHub Releases](https://github.com/nipunbatra/screenreel/releases/latest);
-the version of record is the `VERSION` file. Building, signing, notarizing,
+[Download Screen Reel 0.2.0](https://github.com/nipunbatra/screenreel/releases/latest/download/screenreel.dmg)
+for **Apple silicon, macOS 15+**. The installer is Developer ID signed,
+notarized by Apple, and stapled for Gatekeeper. Release notes and SHA-256
+checksums are on [GitHub Releases](https://github.com/nipunbatra/screenreel/releases).
+The version of record is the `VERSION` file. Building, signing, notarizing,
 releasing, and issuing license keys are described in
 [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md). Licenses gate nothing today —
 the mechanism exists ahead of any pricing decision.
 
-## Start here
+## Build the app (macOS 15+, Swift 6)
 
-The first implementation milestone is not the editor. It is a segmented, crash-recoverable recorder plus a validator. Follow [`CLAUDE.md`](CLAUDE.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-## Status: recorder, editor, and exporter working (macOS 15+, Swift 6)
-
-Milestone 0 (durable recorder + validator) is implemented and gated, and the
-first editor/export slice on top of it works end to end. See
-[`docs/decisions/`](docs/decisions/) for the ADRs.
+See [`docs/decisions/`](docs/decisions/) for the architecture decisions.
 
 **The app** (recorder + editor):
 
 ```bash
-Scripts/make-app.sh          # builds dist/Screenreel.app (version from VERSION)
-open dist/Screenreel.app     # grant Screen Recording, Microphone, Input Monitoring
+Scripts/make-app.sh             # builds dist/Screen Reel.app (version from VERSION)
+open "dist/Screen Reel.app"      # grant Screen Recording, Microphone, Input Monitoring
 ```
 
 Recording starts from wherever you are: the always-on menu bar item
@@ -107,10 +107,10 @@ composed preview with raw-mic audio, and one-click export to MP4 — styled
 (re-encode through the same composition the preview shows) or raw (lossless
 stream copy at ~20× real time).
 
-**The CLI**:
+## CLI
 
 ```bash
-swift build -c release
+swift build -c release --product screenreel --jobs 2
 .build/release/screenreel env                       # environment + capturable displays
 .build/release/screenreel record                    # real capture until Ctrl-C
 .build/release/screenreel record --synthetic --duration 30 --pace 1   # no permissions needed
@@ -134,13 +134,13 @@ a hash-chained write-ahead journal, and an atomically replaced manifest.
 a valid project from committed data and never touches the original. Edits live
 in `edits/timeline.json`; raw media is never modified.
 
-`swift test` runs 422 tests: the automated forced-quit matrix, journal
+`swift test --jobs 1` runs the automated forced-quit matrix, journal
 fuzzing, recovery idempotency, deterministic spring/zoom fixtures
 (seek == play-through), pixel-level composer checks, and export validation
 including non-silence audio verification. Measured performance for the
 styled pipeline is recorded in [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 `SCREENREEL_RUN_LONG_TESTS=1 swift test --filter TenMinuteGateTests` runs the
-ten-minute 4K30 capture-integrity gate (passing), and
+ten-minute 4K30 capture-integrity gate, and
 [`docs/MANUAL_TESTS.md`](docs/MANUAL_TESTS.md) covers real-capture procedures.
 Since then: on-device captions with an editable transcript (SRT/VTT exact
 through cuts/speeds/trim), camera PiP with a fullscreen intro scene,

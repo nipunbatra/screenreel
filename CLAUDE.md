@@ -26,6 +26,13 @@ Build Screenreel from the specifications in `README.md` and `docs/`. These docum
 
 ## Current state (2026-09-05)
 
+Performance/brand changes and release verification are documented in
+`docs/IMPROVEMENT_HANDOFF.md`; read it before resuming. The user-facing name is now
+**Screen Reel**, with `screenreel` as the unchanged CLI. The owner has now
+explicitly authorized UI access, all tests, signed builds, commits, pushes
+and the GitHub Pages deployment. The earlier lecture-time pause is over.
+Use the existing signing identity and notarization profile.
+
 Milestones 0–4 are implemented: durable segmented recorder, editor with
 Metal preview, motion engine, captions, camera, styled/raw/GIF and
 checkpointed export, menu bar + global hotkeys + area picker, licensing and
@@ -35,7 +42,7 @@ release scripts. The project was renamed from "aks" to Screenreel; old
 
 Working rules that were learned the hard way:
 
-- Never replace `dist/Screenreel.app` with an unsigned build: an ad-hoc
+- Never replace `dist/Screen Reel.app` with an unsigned build: an ad-hoc
   signature invalidates every permission grant. `Scripts/make-app.sh`
   refuses to swap in a bundle when Developer ID signing fails; use
   `ALLOW_ADHOC=1 Scripts/make-app.sh dist-test` for throwaway bundles.
@@ -45,9 +52,9 @@ Working rules that were learned the hard way:
   exercises menus, panels, hotkeys and the area picker. Harness launches never
   touch ScreenCaptureKit or the microphone (no permission prompts). Kill only
   the PID you launched — several sessions run the same binary name.
-- Screen Recording permission is never available to processes launched from
-  developer tooling; real capture is verified by the owner per
-  `docs/MANUAL_TESTS.md`. Every recording writes `diagnostics/perf.jsonl`
+- The CLI can capture through the development environment’s existing grant.
+  The signed GUI app has an independent Screen Recording toggle; enabling it
+  currently needs the owner’s password. See `docs/MANUAL_TESTS.md`. Every recording writes `diagnostics/perf.jsonl`
   and `perf-summary.json`; `screenreel perf <project> --trace` reads them.
 - One `swift build`/`swift test` per checkout at a time; agents work in
   their own worktrees. Long gates: `SCREENREEL_RUN_LONG_TESTS=1 swift test

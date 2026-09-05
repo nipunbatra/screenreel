@@ -1,6 +1,6 @@
 # Distribution: signing, notarization, releases, licenses, updates
 
-This document is the runbook for shipping a Screenreel build to people who
+This document is the runbook for shipping a Screen Reel build to people who
 did not compile it themselves, and for the mechanisms that support selling
 it later. Everything here is **plumbing**: pricing, trials, and what (if
 anything) a license unlocks are undecided, and the app gates nothing today.
@@ -13,11 +13,16 @@ anything) a license unlocks are undecided, and the app gates nothing today.
 | App bundle | `Scripts/make-app.sh` | stamps `CFBundleShortVersionString`, `CFBundleVersion`, `SRBuildDate` |
 | Signed DMG | `Scripts/make-dmg.sh` | Developer ID + hardened runtime + timestamp; `ALLOW_ADHOC=1` for local tests |
 | Notarization | `Scripts/notarize.sh` | `notarytool --wait`, staple, `spctl` assessment of DMG and app |
-| GitHub release | `Scripts/release.sh` | tag `v$VERSION`, upload DMG (+ stable `Screenreel.dmg` alias), notes from `CHANGELOG.md` |
+| GitHub release | `Scripts/release.sh` | tag `v$VERSION`, upload DMG (+ stable `screenreel.dmg` alias), notes from `CHANGELOG.md` |
 | License keys | `Sources/Licensing`, `Scripts/make-license.swift` | offline Ed25519 verification; production public key is a placeholder |
 | License UI | `Sources/ScreenreelApp/LicenseView.swift`, `Entitlements.swift` | app menu → Enter License…; nothing gated |
 | Update check | `Sources/ScreenreelApp/UpdateCheck.swift` | manual + automatic (≤ 1/24 h); the app's only network call |
-| Website | `website/index.html` | Download section live; Pro-license block present but disabled |
+| Website | `website/index.html` | Build instructions, release listing, and open-format documentation; no purchase gating |
+
+The human-facing bundle is `Screen Reel.app`. Release filenames use the
+space-free `screenreel` prefix (`ARTIFACT_NAME`) independently of `APP_NAME`.
+Bundle ID, signing identities, entitlements, notarization keychain profile,
+and update endpoint are unchanged by the display-name change.
 
 ## Switches the owner must flip
 
@@ -30,16 +35,17 @@ anything) a license unlocks are undecided, and the app gates nothing today.
    flip that test's expectation when the real key is installed.
 2. **Purchase link** — `Sources/ScreenreelApp/Branding.swift`, `Branding.purchaseURL`.
    `nil` hides every "Buy a License…" button. Set it to the checkout page.
-3. **Website Pro block** — `website/index.html`, the `<section id="pro" hidden>`
-   marked `PRICING_FLAG`. Remove the `hidden` attribute and fill in
-   `data-purchase-url` once pricing is decided. There is no price text to
-   edit because none was invented.
+3. **Website pricing** — the site currently offers the free MIT-licensed app.
+   Add purchase UI only after pricing and a checkout destination are decided.
 4. **Gating** — `Sources/ScreenreelApp/Entitlements.swift` exposes `isLicensed` and
    `updatesCovered`. Nothing reads them to restrict behaviour. When a gate is
    introduced, read it from `Entitlements` so the license window, tests, and
    the feature agree.
 
 ## One-time setup on the release Mac
+
+Reuse working machine-wide credentials. These setup steps are only needed
+when an identity or notarization credential is actually absent.
 
 1. **Developer ID Application certificate**
    - Create at developer.apple.com → Certificates → *Developer ID Application*.
@@ -54,6 +60,12 @@ anything) a license unlocks are undecided, and the app gates nothing today.
    The app-specific password comes from account.apple.com → Sign-In and
    Security → App-Specific Passwords. `Scripts/notarize.sh` uses the profile
    name `screenreel-notary` (override with `NOTARY_PROFILE=…`).
+   An existing App Store Connect API key can be used instead, including on
+   unattended release machines. Set `NOTARY_KEY_PATH` to the private `.p8`
+   file, `NOTARY_KEY_ID` to its key ID and `NOTARY_ISSUER_ID` to its issuer ID
+   when running `Scripts/notarize.sh`. The key is read in place and is never
+   copied into the repository or release. Do not create another credential
+   if the machine already has a working shared key.
 3. **Unlocked keychain.** `codesign` fails with `errSecInternalComponent` when
    the login keychain is locked, which is the normal state over SSH and in
    agent sessions. Unlock it in the same shell before building:
@@ -67,6 +79,9 @@ anything) a license unlocks are undecided, and the app gates nothing today.
 
 ## Cutting a release
 
+App builds use `.build/distribution` to isolate release caches from test and
+pre-rename caches. Override it with `BUILD_PATH`; `BUILD_JOBS` defaults to 2.
+
 ```bash
 # 1. bump the version and write the changelog section
 echo 0.2.0 > VERSION
@@ -75,7 +90,7 @@ git commit -am "Release 0.2.0"
 
 # 2. build + sign
 security unlock-keychain ~/Library/Keychains/login.keychain-db
-Scripts/make-dmg.sh             # → dist/Screenreel-0.2.0.dmg (signed)
+Scripts/make-dmg.sh             # → dist/screenreel-0.2.0.dmg (signed)
 
 # 3. notarize + staple + Gatekeeper assessment
 Scripts/notarize.sh             # → same file, stapled; fails loudly if Apple rejects
@@ -85,13 +100,19 @@ Scripts/release.sh --dry-run
 Scripts/release.sh
 ```
 
-`release.sh` uploads three assets: `Screenreel-<version>.dmg`, an identical
-`Screenreel.dmg` (so `https://github.com/nipunbatra/screenreel/releases/latest/download/Screenreel.dmg`
-is a permanent "latest" link the website uses), and a SHA-256 file.
+`release.sh` uploads three assets: `screenreel-<version>.dmg`, an identical
+`screenreel.dmg` (the permanent `releases/latest/download/screenreel.dmg`
+asset path), and a SHA-256 file using the downloaded file’s basename. The
+website links directly to the installer and to its release notes. Both the
+DMG and the app inside it must pass Gatekeeper before publication.
+
+Images use APFS in a compressed UDIF container and are verified before and
+after signing. The HFS+ builder on the release host returned success while
+producing invalid block offsets; signature verification alone missed it.
 
 ### Local test DMG without a certificate
 
-`ALLOW_ADHOC=1 Scripts/make-dmg.sh` builds `dist/Screenreel-<version>-unsigned.dmg`.
+`ALLOW_ADHOC=1 Scripts/make-dmg.sh` builds `dist/screenreel-<version>-unsigned.dmg`.
 It opens on the building Mac only; `notarize.sh` and `release.sh` refuse it.
 The same switch works for the bare bundle — `ALLOW_ADHOC=1 Scripts/make-app.sh`
 skips identity lookup and signs ad-hoc, which is the way to build when a
@@ -100,12 +121,10 @@ default path tries it and stops at `errSecInternalComponent`).
 
 ### Architecture
 
-`swift build` produces a binary for the host architecture; the current DMG is
-Apple silicon. For a universal build run
-`swift build -c release --product ScreenreelApp --arch arm64 --arch x86_64` and copy
-`.build/apple/Products/Release/ScreenreelApp` in place of `.build/release/ScreenreelApp`
-(not wired into `make-app.sh` yet — do it deliberately and update the website's
-requirements line).
+`swift build` produces a binary for the host architecture; the published
+0.2.0 DMG targets Apple silicon and macOS 15+. Intel users can build the
+same sources on an Intel Mac with macOS 15 and Swift 6. Universal packaging
+is not yet wired into `make-app.sh`.
 
 ## License keys
 
@@ -178,6 +197,9 @@ key to `LicenseVerifier(publicKeys:)` alongside the old one.
 
 - `swift build` and `swift test --filter LicensingTests` pass; tests use
   keypairs generated at test time plus one script-issued fixture key.
-- Signing, notarization, and `gh release create` could **not** be exercised
-  from the agent environment (keychain locked, `gh` token invalid); every
-  script checks its preconditions first and exits non-zero with the fix.
+- September 5, 2026: Developer ID signing, App Store Connect key
+  authentication, notarization, stapling and Gatekeeper checks were
+  exercised successfully. The machine's shared credentials are usable.
+  The older keychain/`gh` limitation no longer applies.
+- See `docs/IMPROVEMENT_HANDOFF.md` for the release's capture, export, UI
+  and website verification results.

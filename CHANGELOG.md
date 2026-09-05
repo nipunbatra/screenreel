@@ -1,13 +1,33 @@
 # Changelog
 
-All notable changes to Screenreel. `Scripts/release.sh` publishes the section
+All notable changes to Screen Reel. `Scripts/release.sh` publishes the section
 matching `VERSION` as the GitHub release notes, so keep each section
 self-contained and replace "Unreleased" with the date when cutting a release.
 
-## 0.2.0 — Unreleased
+## 0.2.0 — 2026-09-05
 
 Performance diagnosis and hardening, launch fix, the rename, and
 distribution plumbing.
+
+- **Screen Reel identity.** A simpler ribbon mark, matching app and menu-bar
+  icons, and a responsive website with an interactive framing illustration.
+  The app is `Screen Reel.app`; the CLI remains `screenreel` and the project
+  format stays open and compatible with existing recordings.
+- **Bounded capture memory.** A five-surface capture pool, two pending screen
+  frames, three pending camera frames and a bounded event handoff prevent
+  large backlogs. Thumbnail work stops when recording begins. The hardware
+  encoder warms before capture and reports an actionable error if unavailable.
+- **Clean capture startup.** Consumers are ready before devices emit, and
+  the shared capture stream waits for every enabled track's handler. This
+  avoids losing initial frames or audio while device startup completes.
+- **Sharper playback.** Editor playback keeps actual display-surface pixels
+  up to 1440p instead of always halving resolution. Active scrubbing still
+  uses a lighter preview. Native-resolution recording and export stay intact.
+- **Faster, aligned voice cleanup.** Reusable FFT buffers reduce the measured
+  denoiser microbenchmark wall time by 31%. Real lookahead compensates its
+  512-sample delay, preserving the start and tail of narration during export.
+- **Keyboard opt-in persists.** Explicit keystroke capture survives a settings
+  round trip; older projects continue to default to keyboard capture off.
 
 - **Renamed from aks to Screenreel everywhere.** CLI binary `screenreel`
   (was `aks`), bundle identifier `com.nipunbatra.screenreel` (was
@@ -74,9 +94,10 @@ distribution plumbing.
   (`CFBundleShortVersionString`, `CFBundleVersion`, `SRBuildDate`);
   `Scripts/make-dmg.sh`, `Scripts/notarize.sh`, `Scripts/release.sh` for a
   signed, notarized, stapled DMG published to GitHub Releases with a stable
-  `Screenreel.dmg` download link. Documented in `docs/DISTRIBUTION.md`.
-- **Website.** Download section with system requirements; a Pro-license
-  block exists but stays hidden until pricing is decided.
+  `screenreel.dmg` download link. Documented in `docs/DISTRIBUTION.md`.
+- **Website.** Responsive layout, an interactive framing illustration,
+  signed installer download, clear system requirements and a privacy page.
+  No analytics, remote fonts, purchase gating or frontend dependencies.
 - `Scripts/make-license.swift` generates the signing keypair and issues keys.
 
 ## 0.1.0 — 2026-08-30

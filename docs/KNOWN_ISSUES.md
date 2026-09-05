@@ -1,6 +1,6 @@
 # Known issues and accepted trade-offs
 
-Tracked consciously; none violate the safety invariants. Date: 2026-08-25.
+Tracked consciously. Reviewed for the September 5, 2026 release.
 
 - **Rapid clip-op bursts** (PreviewPlayer.applyClips): two clip operations
   issued in the same runloop burst could clobber each other because each
@@ -53,12 +53,12 @@ Tracked consciously; none violate the safety invariants. Date: 2026-08-25.
   dropped buffers. The same commit passes on a quiet machine; the test
   prints its perf digest so the two cases are distinguishable
   (`TenMinuteGate perf: … system 88%`).
-- **Developer ID signing needs an unlocked keychain**: from agent or SSH
-  sessions `codesign` fails with `errSecInternalComponent`; `make-app.sh`
+- **Developer ID signing needs an unlocked keychain**: when the keychain is locked, `codesign` fails with `errSecInternalComponent`; `make-app.sh`
   then leaves the previous bundle in place and explains. Build releases
-  from Terminal.app or unlock the login keychain first.
-- **Harness runs cannot record**: Screen Recording permission is granted
-  per responsible process, and processes launched from developer tooling
-  inherit the tool's (denied) grant, so real capture is verified manually
-  (`docs/MANUAL_TESTS.md`).
-
+  with the existing unlocked keychain; the shared App Store Connect key
+  also works for unattended notarization.
+- **GUI recording permission is independent of the CLI**: the CLI can
+  record through the development environment's existing grant. The signed
+  GUI app's Screen Recording toggle is currently off on the release Mac;
+  enabling it requires the owner's account password in System Settings.
+  Editor/export and control harnesses require no new recording access.

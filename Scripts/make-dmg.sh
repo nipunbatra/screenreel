@@ -13,7 +13,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP_NAME="${APP_NAME:-Screenreel}"
+APP_NAME="${APP_NAME:-Screen Reel}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-screenreel}"
 VERSION="$(tr -d '[:space:]' < VERSION)"
 OUT="dist"
 STAGING="$OUT/dmg-staging"
@@ -24,7 +25,7 @@ command -v codesign >/dev/null || { echo "codesign not found (install Xcode comm
 
 if [ "$ALLOW_ADHOC" = "1" ]; then
     echo "ALLOW_ADHOC=1: building an unsigned test DMG (not releasable)"
-    DMG="$OUT/${APP_NAME}-${VERSION}-unsigned.dmg"
+    DMG="$OUT/${ARTIFACT_NAME}-${VERSION}-unsigned.dmg"
     ALLOW_ADHOC=1 Scripts/make-app.sh "$OUT"
 else
     IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
@@ -40,7 +41,7 @@ ERROR: no "Developer ID Application" identity found.
 MSG
         exit 1
     fi
-    DMG="$OUT/${APP_NAME}-${VERSION}.dmg"
+    DMG="$OUT/${ARTIFACT_NAME}-${VERSION}.dmg"
     REQUIRE_DEVELOPER_ID=1 Scripts/make-app.sh "$OUT"
 fi
 
@@ -53,7 +54,10 @@ mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
-hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGING" -ov -format UDZO -fs HFS+ "$DMG" >/dev/null
+# APFS is supported on every target Mac. The HFS+ image builder on the
+# release host produced invalid BLKX offsets despite exiting successfully.
+hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGING" -ov -format UDZO -fs APFS "$DMG" >/dev/null
+hdiutil verify "$DMG"
 rm -rf "$STAGING"
 
 if [ "$ALLOW_ADHOC" != "1" ]; then
@@ -62,8 +66,9 @@ if [ "$ALLOW_ADHOC" != "1" ]; then
     codesign --force --timestamp --sign "$IDENTITY" "$DMG"
     codesign --verify --verbose=2 "$DMG"
 fi
+hdiutil verify "$DMG"
 
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+(cd "$(dirname "$DMG")" && shasum -a 256 "$(basename "$DMG")") | tee "$DMG.sha256"
 echo "Built $DMG"
 if [ "$ALLOW_ADHOC" != "1" ]; then
     echo "Next: Scripts/notarize.sh $DMG"
